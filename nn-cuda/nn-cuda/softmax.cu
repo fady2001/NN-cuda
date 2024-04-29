@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "common.cuh"
 #include <iostream>
+#include <fstream>
+
 #define BLOCK_SIZE 256
 
 
@@ -69,60 +71,77 @@ __global__ void softmax_kernel(const T* in_h, T* out_d, int N, int C)
 	}
 }
 
-void softmax(float* input, float* output, int N, int C) {
-	float* d_input, * d_output;
-
-	cudaMalloc((void**)& d_input, N * C * sizeof(float));
-	cudaMalloc((void**)& d_output, N * C * sizeof(float));
-
-	cudaMemcpy(d_input, input, N * C * sizeof(float), cudaMemcpyHostToDevice);
-
-	int num_blocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
-	softmax_kernel <<<num_blocks, BLOCK_SIZE>>> (d_input, d_output, N, C);
-
-	cudaMemcpy(output, d_output, N * C * sizeof(float), cudaMemcpyDeviceToHost);
-
-	cudaFree(d_input);
-	cudaFree(d_output);
+template <class T>
+void run_kernel1(const T* input, T* output, int N, int C, int Depth,int block_size)
+{
+	int num_blocks = ceil_div(N, block_size);
+	softmax_kernel << <num_blocks, block_size >> > (input, output, N * C, Depth);
 }
 
-int main() {
-	const int N = 5; // Number of samples
-	const int C = 3; // Number of classes
-	float input[N][C] = {
-		{1.0, 2.0, 3.0},
-		{4.0, 5.0, 6.0},
-		{7.0, 8.0, 9.0},
-		{10.0, 11.0, 12.0},
-		{13.0, 14.0, 15.0}
-	};
-	float output[N][C];
+int main()
+{
+	srand(0);
+	int B = 100, T = 100, V = 10;
 
-	softmax(reinterpret_cast<float*>(input), reinterpret_cast<float*>(output), N, C);
+	int deviceIdx = 0;
+	cudaCheck(cudaSetDevice(deviceIdx));
 
-	std::cout << "Softmax output:" << std::endl;
-	for (int i = 0; i < N; ++i) {
-		for (int j = 0; j < C; ++j) {
-			std::cout << output[i][j] << " ";
+	// create host memory of random numbers
+	float* h_out = (float*)malloc(B * T * V * sizeof(float));
+	float* h_inp = make_ones_float(B * T * V);
+	// write h_inp to file
+	std::ofstream outfile("output.txt");
+	if (outfile.is_open()) {
+		for (int i = 0; i < B * T * V; i++) {
+			outfile << h_inp[i] << std::endl;
 		}
-		std::cout << std::endl;
+		outfile.close();
+	} else {
+		std::cout << "Unable to open file";
+	}
+	
+
+	// make the input less uniformly random: Otherwise, all probabilities will be basically zero,
+	// and the tests are not actually meaningful.
+	const int* outliers = make_random_int(B * T * 3, V);
+	for (int k = 0; k < 3; ++k) {
+		for (int j = 0; j < B * T; ++j) {
+			h_inp[j * V + outliers[j * 3 + k]] *= 20;
+		}
 	}
 
+	// move to GPU
+	float* d_out;
+	float* d_inp;
+	cudaCheck(cudaMalloc(&d_out, B * T * V * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_inp, B * T * V * sizeof(float)));
+	cudaCheck(cudaMemcpy(d_inp, h_inp, B * T * V * sizeof(float), cudaMemcpyHostToDevice));
+	
+	softmax_cpu(h_inp, h_out, B * T, V);
+
+	int block_sizes[] = { 32 };
+	// first check the correctness of the kernel
+	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+		int block_size = block_sizes[j];
+		printf("Checking block size %d.\n", block_size);
+		run_kernel1(d_inp, d_out, B, T, V, block_sizes[j]);
+		validate_result(d_out, h_out, "out", B * T * V, 1e-4f);
+	}
+
+	printf("All results match. Starting benchmarks.\n\n");
+	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+		int block_size = block_sizes[j];
+
+		int repeat_times = 100;
+		float elapsed_time = benchmark_kernel(repeat_times, run_kernel1<float>, d_inp, d_out, B, T, V, block_sizes[j]);
+
+		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (B * T));
+	}
+
+	// free memory
+	free(h_out);
+	free(h_inp);
+	cudaCheck(cudaFree(d_out));
+	cudaCheck(cudaFree(d_inp));
 	return 0;
 }
-
-//int main()
-//{
-//	// define the input and output arrays
-//	float in[] = { 1, 2, 3, 4 };
-//	float out[4];
-//	// call the softmax function
-//	softmax_cpu(in, out, 1, 4);
-//	// print the output
-//	for (int i = 0; i < 4; i++)
-//	{
-//		printf("%f ", out[i]);
-//	}
-//	printf("\n");
-//	return 0;
-//}
