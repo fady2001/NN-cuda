@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include "common.cuh"
 
-#define BLOCK_SIZE 256
-
-
 template <class T>
 // ------------------------------- cpu version -------------------------------
 void softmax_cpu(const T * in, T * out, int N, int C)
@@ -73,49 +70,49 @@ __global__ void softmax_kernel(const T* in_h, T* out_d, int N, int C)
 }
 
 template <class T>
-void run_kernel1(const T* input, T* output, int N, int C, int Depth, int block_size)
+void run_kernel1(const T* input, T* output, int N, int C, int block_size)
 {
-	int num_blocks = ceil_div(N*C, block_size);
-	softmax_kernel << <num_blocks, block_size >> > (input, output, N * C, Depth);
+	int num_blocks = ceil_div(N, block_size);
+	softmax_kernel << <num_blocks, block_size >> > (input, output, N, C);
 }
 
 int main()
 {
 	srand(0);
-	int B = 100, T = 100, V = 100;
+	int N = 100, C = 100;
 
 	int deviceIdx = 0;
 	cudaCheck(cudaSetDevice(deviceIdx));
 
 	// create host memory of random numbers
-	float* h_out = (float*)malloc(B * T * V * sizeof(float));
-	float* h_inp = make_random_float(B * T * V);
+	float* h_out = (float*)malloc(N * C * sizeof(float));
+	float* h_inp = make_random_float(N * C);
 
 	// make the input less uniformly random: Otherwise, all probabilities will be basically zero,
 	// and the tests are not actually meaningful.
-	const int* outliers = make_random_int(B * T * 3, V);
+	const int* outliers = make_random_int(N * 3, C);
 	for (int k = 0; k < 3; ++k) {
-		for (int j = 0; j < B * T; ++j) {
-			h_inp[j * V + outliers[j * 3 + k]] *= 20;
+		for (int j = 0; j < N; ++j) {
+			h_inp[j * C + outliers[j * 3 + k]] *= 20;
 		}
 	}
 
 	// move to GPU
 	float* d_out;
 	float* d_inp;
-	cudaCheck(cudaMalloc(&d_out, B * T * V * sizeof(float)));
-	cudaCheck(cudaMalloc(&d_inp, B * T * V * sizeof(float)));
-	cudaCheck(cudaMemcpy(d_inp, h_inp, B * T * V * sizeof(float), cudaMemcpyHostToDevice));
+	cudaCheck(cudaMalloc(&d_out, N * C * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_inp, N * C * sizeof(float)));
+	cudaCheck(cudaMemcpy(d_inp, h_inp, N * C * sizeof(float), cudaMemcpyHostToDevice));
 
-	softmax_cpu<float>(h_inp, h_out, B * T, V);
+	softmax_cpu<float>(h_inp, h_out, N, C);
 
     int block_sizes[] = {32, 64, 128, 256, 512, 1024};
 	// first check the correctness of the kernel
 	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
 		int block_size = block_sizes[j];
 		printf("Checking block size %d.\n", block_size);
-		run_kernel1(d_inp, d_out, B, T, V, block_sizes[j]);
-		validate_result(d_out, h_out, "out", B * T * V, 1e-4f);
+		run_kernel1(d_inp, d_out, N, C, block_sizes[j]);
+		validate_result(d_out, h_out, "out", N * C, 1e-4f);
 	}
 
 	printf("All results match. Starting benchmarks.\n\n");
@@ -123,9 +120,9 @@ int main()
 		int block_size = block_sizes[j];
 
 		int repeat_times = 100;
-		float elapsed_time = benchmark_kernel(repeat_times, run_kernel1<float>, d_inp, d_out, B, T, V, block_sizes[j]);
+		float elapsed_time = benchmark_kernel(repeat_times, run_kernel1<float>, d_inp, d_out, N, C, block_sizes[j]);
 
-		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (B * T));
+		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
 	}
 
 	// free memory
