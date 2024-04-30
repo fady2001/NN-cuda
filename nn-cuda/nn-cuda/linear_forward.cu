@@ -69,9 +69,9 @@ int main()
 
 // write arrays to npy files if you want to test with torch
 #if TEST_PYTORTH
-    write_npy("X_c.npy", inp, 2, new unsigned long[2]{B, N});
-    write_npy("W_C.npy", weight, 2, new unsigned long[2]{M, N});
-    write_npy("bias_C.npy", bias, 1, new unsigned long[1]{M});
+    write_npy("linear-layer\\X_c.npy", inp, 2, new unsigned long[2]{B, N});
+    write_npy("linear-layer\\W_C.npy", weight, 2, new unsigned long[2]{M, N});
+    write_npy("linear-layer\\bias_C.npy", bias, 1, new unsigned long[1]{M});
 #endif
 
     // move to GPU
@@ -90,7 +90,7 @@ int main()
     linear_layer_forward_cpu(inp, weight, bias, out, B, N, M);
 
 #if TEST_PYTORTH
-    write_npy("out_C.npy", out, 2, new unsigned long[2]{B, M});
+    write_npy("linear-layer\\out_C.npy", out, 2, new unsigned long[2]{B, M});
 #endif
 
     // print_2D_Matrix(out, "out", B, M);

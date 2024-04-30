@@ -84,7 +84,7 @@ struct NBArray
 };
 void write_npy(const char *filename, const float *data, unsigned int n_dims, const unsigned long *shape)
 {
-	std::string full_path = "..\\with-torch-tests\\linear-layer\\" + std::string(filename);
+	std::string full_path = "..\\with-torch-tests\\" + std::string(filename);
 	npy::SaveArrayAsNumpy<float>(full_path, false, n_dims, shape, data);
 }
 
