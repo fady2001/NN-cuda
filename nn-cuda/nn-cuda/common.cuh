@@ -20,17 +20,6 @@ void cuda_check(cudaError_t error, const char* file, int line) {
 	}
 };
 #define cudaCheck(err) (cuda_check(err, __FILE__, __LINE__))
-
-// cuBLAS error checking
-void cublasCheck(cublasStatus_t status, const char* file, int line)
-{
-	if (status != CUBLAS_STATUS_SUCCESS) {
-		printf("[cuBLAS ERROR]: %d %s %d\n", status, file, line);
-		exit(EXIT_FAILURE);
-	}
-}
-#define cublasCheck(status) { cublasCheck((status), __FILE__, __LINE__); }
-
 // ----------------------------------------------------------------------------
 // random utils
 

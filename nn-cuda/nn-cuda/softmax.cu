@@ -6,7 +6,7 @@
 
 template <class T>
 // ------------------------------- cpu version -------------------------------
-void softmax_cpu(const T* in, T* out, int N, int C)
+void softmax_cpu(const T * in, T * out, int N, int C)
 {
 	// loop over each row. each row will get softmaxed
 	for (int i = 0; i < N; i++)
@@ -51,7 +51,10 @@ __global__ void softmax_kernel(const T* in_h, T* out_d, int N, int C)
 	if (i < N) {
 		T max_val = in_h[i * C];
 		for (int j = 1; j < C; j++) {
-			max_val = in_h[i * C + j];
+			if (in_h[i * C + j] > max_val)
+			{
+				max_val = in_h[i * C + j];
+			}
 		}
 
 		T sum = 0;
@@ -70,23 +73,23 @@ __global__ void softmax_kernel(const T* in_h, T* out_d, int N, int C)
 }
 
 template <class T>
-void run_kernel1(const T* input, T* output, int N, int C, int Depth,int block_size)
+void run_kernel1(const T* input, T* output, int N, int C, int Depth, int block_size)
 {
-	int num_blocks = ceil_div(N, block_size);
+	int num_blocks = ceil_div(N*C, block_size);
 	softmax_kernel << <num_blocks, block_size >> > (input, output, N * C, Depth);
 }
 
 int main()
 {
 	srand(0);
-	int B = 100, T = 100, V = 10;
+	int B = 100, T = 100, V = 100;
 
 	int deviceIdx = 0;
 	cudaCheck(cudaSetDevice(deviceIdx));
 
 	// create host memory of random numbers
 	float* h_out = (float*)malloc(B * T * V * sizeof(float));
-	float* h_inp = make_ones_float(B * T * V);
+	float* h_inp = make_random_float(B * T * V);
 
 	// make the input less uniformly random: Otherwise, all probabilities will be basically zero,
 	// and the tests are not actually meaningful.
@@ -103,10 +106,10 @@ int main()
 	cudaCheck(cudaMalloc(&d_out, B * T * V * sizeof(float)));
 	cudaCheck(cudaMalloc(&d_inp, B * T * V * sizeof(float)));
 	cudaCheck(cudaMemcpy(d_inp, h_inp, B * T * V * sizeof(float), cudaMemcpyHostToDevice));
-	
-	softmax_cpu(h_inp, h_out, B * T, V);
 
-	int block_sizes[] = { 32 };
+	softmax_cpu<float>(h_inp, h_out, B * T, V);
+
+    int block_sizes[] = {32, 64, 128, 256, 512, 1024};
 	// first check the correctness of the kernel
 	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
 		int block_size = block_sizes[j];
