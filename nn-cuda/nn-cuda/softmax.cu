@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include "common.cuh"
-#include <iostream>
-#include <fstream>
 
 #define BLOCK_SIZE 256
 
@@ -89,17 +87,6 @@ int main()
 	// create host memory of random numbers
 	float* h_out = (float*)malloc(B * T * V * sizeof(float));
 	float* h_inp = make_ones_float(B * T * V);
-	// write h_inp to file
-	std::ofstream outfile("output.txt");
-	if (outfile.is_open()) {
-		for (int i = 0; i < B * T * V; i++) {
-			outfile << h_inp[i] << std::endl;
-		}
-		outfile.close();
-	} else {
-		std::cout << "Unable to open file";
-	}
-	
 
 	// make the input less uniformly random: Otherwise, all probabilities will be basically zero,
 	// and the tests are not actually meaningful.
