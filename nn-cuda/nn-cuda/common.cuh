@@ -82,10 +82,11 @@ struct NBArray
 	int n_dims;
 	int *shape;
 };
-void write_npy(const char *filename, const float *data, unsigned int n_dims, const unsigned long *shape)
+template<class T>
+void write_npy(const char *filename, const T *data, unsigned int n_dims, const unsigned long *shape)
 {
 	std::string full_path = "..\\with-torch-tests\\" + std::string(filename);
-	npy::SaveArrayAsNumpy<float>(full_path, false, n_dims, shape, data);
+	npy::SaveArrayAsNumpy<T>(full_path, false, n_dims, shape, data);
 }
 
 //------------------------------------------------------------------------------
