@@ -1,3 +1,9 @@
+#include <device_launch_parameters.h>
+#include <device_atomic_functions.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <iostream>
+
 template <class T>
 void array_sum_cpu(T* out, const T* in, int N) {
     T sum = 0;
@@ -8,8 +14,7 @@ void array_sum_cpu(T* out, const T* in, int N) {
 }
 
 // kernel 1
-template <class T>
-__global__ void array_sum_kernel(T* out, const T* in, int N) {
+__global__ void array_sum_kernel(float* out, const float* in, int N) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < N) {
         atomicAdd(out, in[i]);
@@ -27,7 +32,7 @@ __global__ void array_sum_kernel2(T *d_a, T *d_result, int size)
     int amount_per_thread = (size + blockDim.x - 1) / blockDim.x;
     int start_index = threadIdx.x*amount_per_thread; 
     int end_index= min(start_index + amount_per_thread,size); 
-    T partialsum = 0.0f;
+	T partialsum = 0.0f;
     for(int k = start_index ; k <end_index ; k++ )
     {
         // perform the first reduction step while loading data
@@ -79,7 +84,7 @@ __global__ void array_sum_kernel3(T *d_a, T *d_result, int size)
     After each step, `__syncthreads()` is called to ensure that all threads have completed their computations before the next iteration begins. This is necessary because in the next iteration, some threads will be working with results computed by other threads in the current iteration.
     This process continues until `s` becomes 0, at which point all elements of the array have been added together and the total is stored in `v[0]`.
     */
-    for(unsigned int s= blockDim.x/2; s>0; s>>=1) 
+	for(unsigned int s= blockDim.x/2; s>0; s>>=1) 
     { 
         if (threadIdx.x < s) 
         { 
@@ -91,4 +96,35 @@ __global__ void array_sum_kernel3(T *d_a, T *d_result, int size)
     {
         d_result[0] = v[0];
     }
+}
+
+
+// main function to test the first kernel
+void test_array_sum_kernel() {
+    int N = 1 << 20;
+    float *h_in = new float[N];
+    float *h_out = new float[1];
+    float *d_in;
+    float *d_out;
+	cudaMalloc(&d_in, N * sizeof(float));
+    cudaMalloc(&d_out, sizeof(float));
+    for (int i = 0; i < N; ++i) {
+        h_in[i] = 1.0f;
+    }
+    cudaMemcpy(d_in, h_in, N * sizeof(float), cudaMemcpyHostToDevice);
+    array_sum_kernel<<<(N + 255) / 256, 256>>>(d_out, d_in, N);
+    cudaMemcpy(h_out, d_out, sizeof(float), cudaMemcpyDeviceToHost);
+    std::cout << "GPU result: " << *h_out << std::endl;
+    array_sum_cpu(h_out, h_in, N);
+    std::cout << "CPU result: " << *h_out << std::endl;
+    cudaFree(d_in);
+    cudaFree(d_out);
+    delete[] h_in;
+    delete[] h_out;
+}
+
+int main()
+{
+    test_array_sum_kernel();
+    return 0;
 }
