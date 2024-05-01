@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cmath>
-#include "common.cuh"
+#include "common.h"
 #include "device_launch_parameters.h"
 #define TEST_PYTORTH true
 /**

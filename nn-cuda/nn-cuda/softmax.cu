@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "common.cuh"
+#include "common.h"
 #define TEST_PYTORTH true
 
 // ------------------------------- cpu version -------------------------------
