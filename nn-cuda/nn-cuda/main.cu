@@ -1,4 +1,5 @@
 #include "common.cuh"
+#include<math.h>
 #define TEST_PYTORTH true
 #include "device_launch_parameters.h"
 /**
@@ -173,7 +174,7 @@ __global__ void softmax_kernel(const T* in_h, T* out_d, int N, int C)
 template <class T>
 void run_softmax_kernel(const T* input, T* output, int N, int C, int block_size)
 {
-	int num_blocks = ceil_div(N, block_size);
+	int num_blocks = (N + block_size - 1) / block_size;
 	softmax_kernel << <num_blocks, block_size >> > (input, output, N, C);
 }
 //-----------------------------------------------------------------------------------
@@ -214,7 +215,8 @@ __global__ void cross_entropy_kernel(T* losses, const T* input, const int* targe
 template <class T>
 void run_cross_entropy_kernel(T* losses, const T* probs, const int* targets, int N, int C, const int block_size)
 {
-	const int grid_size = ceil_div(N, block_size);
+	//(dividend + divisor - 1) / divisor
+	const int grid_size = (N + block_size - 1) / block_size;
 	cross_entropy_kernel << <grid_size, block_size >> > (losses, probs, targets, N, C);
 	cudaCheck(cudaGetLastError());
 }
@@ -258,7 +260,8 @@ __global__ void array_sum_kernel3(T* d_a, T* d_result, int size)
 template <class T>
 void run_array_sum_kernel3(T* d_a, T* d_result, int size, int block_size)
 {
-	int num_blocks = ceil_div(size, block_size);
+	// (dividend + divisor - 1) / divisor
+	int num_blocks = (size + block_size - 1) / block_size;
 	array_sum_kernel3 << <1, num_blocks, block_size * sizeof(T) >> > (d_a, d_result, size);
 	cudaCheck(cudaGetLastError());
 }
@@ -294,11 +297,11 @@ typedef struct
 typedef struct
 {
 	unsigned long param_sizes[NUM_PARAMETER_ARRAYS];
-	ModelParameters* params;
+	ModelParameters params;
 	float* params_memory;
 
 	unsigned long activation_sizes[NUM_ACTIVATION_ARRAYS];
-	ModelActivation* activations;
+	ModelActivation activations;
 	float* activations_memory;
 } TwoLayerModel;
 
@@ -322,7 +325,7 @@ float* float_cpu_malloc_and_point(void* data, unsigned long* sizes, int num_arra
 	{
 		total_size += sizes[i];
 	}
-	float* memory;// = (float*)malloc(total_size * sizeof(float));
+	float* memory = nullptr; // = (float*)malloc(total_size * sizeof(float));
 
 	switch (initial_value)
 	{
@@ -336,46 +339,112 @@ float* float_cpu_malloc_and_point(void* data, unsigned long* sizes, int num_arra
 		memory = make_random_float(total_size);
 		break;
 	}
-	if (memory == nullptr)
+	if (memory == NULL)
 	{
 		// Handle allocation failure
-		exit(EXIT_FAILURE);
-		//return NULL;
+		return NULL;
 	}
-
-	ModelParameters* params = (ModelParameters*)data;
-	float** ptrs[] = { &(params->ln1w),
-					  &(params->ln1b),
-					  &(params->ln2w),
-					  &(params->ln2b) };
-	float* memory_iterator = memory;
-	for (int i = 0; i < num_arrays; i++)
+	switch (type)
 	{
-		*(ptrs[i]) = memory_iterator;
-		memory_iterator += sizes[i];
+	case PARAMETERS_TYPE: // ModelParameters
+	{
+		ModelParameters* params = (ModelParameters*)data;
+		float** ptrs[] = { &params->ln1w,
+						  &params->ln1b,
+						  &params->ln2w,
+						  &params->ln2b };
+		float* memory_iterator = memory;
+		for (int i = 0; i < num_arrays; i++)
+		{
+			*(ptrs[i]) = memory_iterator;
+			memory_iterator += sizes[i];
+		}
 	}
-
-	//case ACTIVATIONS_TYPE: // ModelActivation
-	//{
-	//	ModelActivation* activations = (ModelActivation*)data;
-	//	float** ptrs[] = { &activations->ln1,
-	//					  &activations->a1,
-	//					  &activations->ln2,
-	//					  &activations->sm,
-	//					  &activations->loss,
-	//					  &activations->reduced_loss };
-	//	float* memory_iterator = memory;
-	//	for (int i = 0; i < num_arrays; i++)
-	//	{
-	//		*(ptrs[i]) = memory_iterator;
-	//		memory_iterator += sizes[i];
-	//	}
-	//}
-	//break;
-
+	break;
+	case ACTIVATIONS_TYPE: // ModelActivation
+	{
+		ModelActivation* activations = (ModelActivation*)data;
+		float** ptrs[] = { &activations->ln1,
+						  &activations->a1,
+						  &activations->ln2,
+						  &activations->sm,
+						  &activations->loss,
+						  &activations->reduced_loss };
+		float* memory_iterator = memory;
+		for (int i = 0; i < num_arrays; i++)
+		{
+			*(ptrs[i]) = memory_iterator;
+			memory_iterator += sizes[i];
+		}
+	}
+	break;
+	}
 	return memory;
 }
 
+void model_to_cuda(TwoLayerModel* d_model, TwoLayerModel* h_model)
+{
+	// copy parameters
+	unsigned long total_param_size = 0;
+	for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
+	{
+		total_param_size += h_model->param_sizes[i];
+		d_model->param_sizes[i] = h_model->param_sizes[i];
+	}
+	cudaCheck(cudaMalloc(&d_model->params_memory, total_param_size * sizeof(float)));
+	cudaCheck(cudaMemcpy(d_model->params_memory, h_model->params_memory, total_param_size * sizeof(float), cudaMemcpyHostToDevice));
+	// point to the copied memory
+	float* memory_iterator = (float*)d_model->params_memory;
+
+	ModelParameters* params = &d_model->params;
+	float** ptrs[] = { &params->ln1w,
+					  &params->ln1b,
+					  &params->ln2w,
+					  &params->ln2b };
+	for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
+	{
+		*(ptrs[i]) = memory_iterator;
+		memory_iterator += h_model->param_sizes[i];
+	}
+
+
+	// copy activations
+	unsigned long total_activation_size = 0;
+	for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
+	{
+		total_activation_size += h_model->activation_sizes[i];
+		d_model->activation_sizes[i] = h_model->activation_sizes[i];
+	}
+	cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(float)));
+	cudaCheck(cudaMemcpy(d_model->activations_memory, h_model->activations_memory, total_activation_size * sizeof(float), cudaMemcpyHostToDevice));
+
+
+
+	memory_iterator = (float*)d_model->activations_memory;
+	ModelActivation* activations = &d_model->activations;
+	float** ptrs2[] = { &activations->ln1,
+					   &activations->a1,
+					   &activations->ln2,
+					   &activations->sm,
+					   &activations->loss,
+					   &activations->reduced_loss };
+	for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
+	{
+		*(ptrs2[i]) = memory_iterator;
+		memory_iterator += h_model->activation_sizes[i];
+	}
+}
+
+void clean_model_cpu(TwoLayerModel* model)
+{
+	free(model->params_memory);
+	free(model->activations_memory);
+}
+void clean_model_gpu(TwoLayerModel* model)
+{
+	cudaCheck(cudaFree(model->params_memory));
+	cudaCheck(cudaFree(model->activations_memory));
+}
 int main()
 {
 	unsigned long input_dim = 3;
@@ -404,7 +473,7 @@ int main()
 	model.activation_sizes[3] = B * C;  // sm
 	model.activation_sizes[4] = B;      // loss
 	model.activation_sizes[5] = 1;      // reduced_loss
-	model.activations_memory = float_cpu_malloc_and_point(&(model.activations), model.activation_sizes, NUM_ACTIVATION_ARRAYS, ACTIVATIONS_TYPE);
+	model.activations_memory = float_cpu_malloc_and_point(&model.activations, model.activation_sizes, NUM_ACTIVATION_ARRAYS, ACTIVATIONS_TYPE);
 
 	int deviceIdx = 0;
 	cudaCheck(cudaSetDevice(deviceIdx));
@@ -414,12 +483,39 @@ int main()
 	float* inp = make_random_float(B * input_dim);
 	int* target = make_random_int(B, int(C));
 
-	// #if TEST_PYTORTH
-	//     write_npy("all-model\\X_c.npy", inp, 2, new unsigned long[2]{B, input_dim});
-	//     write_npy("all-model\\target.npy", target, 1, new unsigned long[1]{B});
-	//     write_npy("all-model\\ln1w.npy", (model.params)->ln1w, 2, new unsigned long[2]{H1, input_dim});
-	//     write_npy("all-model\\ln1b.npy", model.params->ln1b, 1, new unsigned long[1]{H1});
-	//     write_npy("all-model\\ln2w.npy", model.params->ln2w, 2, new unsigned long[2]{H2, H1});
-	//     write_npy("all-model\\ln2b.npy", model.params->ln2b, 1, new unsigned long[1]{H2});
-	// #endif
+#if TEST_PYTORTH
+	write_npy("all-model\\X_c.npy", inp, 2, new unsigned long[2] {B, input_dim});
+	write_npy("all-model\\target.npy", target, 1, new unsigned long[1] {B});
+	write_npy("all-model\\ln1w.npy", model.params.ln1w, 2, new unsigned long[2] {H1, input_dim});
+	write_npy("all-model\\ln1b.npy", model.params.ln1b, 1, new unsigned long[1] {H1});
+	write_npy("all-model\\ln2w.npy", model.params.ln2w, 2, new unsigned long[2] {H2, H1});
+	write_npy("all-model\\ln2b.npy", model.params.ln2b, 1, new unsigned long[1] {H2});
+#endif
+
+	// move to GPU
+	TwoLayerModel d_model;
+	model_to_cuda(&d_model, &model);
+
+	// move input and target to GPU
+	float* d_inp;
+	int* d_target;
+	cudaCheck(cudaMalloc(&d_inp, B * input_dim * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_target, B * sizeof(int)));
+	cudaCheck(cudaMemcpy(d_inp, inp, B * input_dim * sizeof(float), cudaMemcpyHostToDevice));
+	cudaCheck(cudaMemcpy(d_target, target, B * sizeof(int), cudaMemcpyHostToDevice));
+
+	// run the model
+	linear_layer(d_inp, d_model.params.ln1w, d_model.params.ln1b, d_model.activations.ln1, B, input_dim, H1, 32);
+	run_relu_kernel(d_model.activations.ln1, d_model.activations.a1, B, H1, 32);
+	linear_layer(d_model.activations.a1, d_model.params.ln2w, d_model.params.ln2b, d_model.activations.ln2, B, H1, H2, 32);
+	run_softmax_kernel(d_model.activations.ln2, d_model.activations.sm, B, H2, 32);
+	run_cross_entropy_kernel(d_model.activations.loss, d_model.activations.sm, d_target, B, C, 32);
+	run_array_sum_kernel3(d_model.activations.loss, d_model.activations.reduced_loss, B, 32);
+
+	// cudasynchronize();
+	cudaCheck(cudaDeviceSynchronize());
+	// copy the loss to the host
+	float* reduced_loss = (float*)malloc(sizeof(float));
+	cudaCheck(cudaMemcpy(reduced_loss, d_model.activations.reduced_loss, sizeof(float), cudaMemcpyDeviceToHost));
+	printf("Loss: %f\n", *reduced_loss);
 }
