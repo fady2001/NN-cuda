@@ -1,5 +1,5 @@
 #include "common.cuh"
-#include<math.h>
+#include <math.h>
 #define TEST_PYTORTH true
 #include "device_launch_parameters.h"
 /**
@@ -407,7 +407,6 @@ void model_to_cuda(TwoLayerModel* d_model, TwoLayerModel* h_model)
 		memory_iterator += h_model->param_sizes[i];
 	}
 
-
 	// copy activations
 	unsigned long total_activation_size = 0;
 	for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
@@ -417,8 +416,6 @@ void model_to_cuda(TwoLayerModel* d_model, TwoLayerModel* h_model)
 	}
 	cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(float)));
 	cudaCheck(cudaMemcpy(d_model->activations_memory, h_model->activations_memory, total_activation_size * sizeof(float), cudaMemcpyHostToDevice));
-
-
 
 	memory_iterator = (float*)d_model->activations_memory;
 	ModelActivation* activations = &d_model->activations;
@@ -450,7 +447,7 @@ int main()
 	unsigned long input_dim = 3;
 	unsigned long B = 2;
 	unsigned long H1 = 3;
-	unsigned long H2 = 3;
+	unsigned long H2 = 5;
 	unsigned long C = 3;
 	TwoLayerModel model;
 
@@ -458,7 +455,7 @@ int main()
 	model.param_sizes[1] = H1;             // ln1b
 	model.param_sizes[2] = H2 * H1;        // ln2w
 	model.param_sizes[3] = H2;             // ln2b
-	model.params_memory = float_cpu_malloc_and_point(&(model.params), model.param_sizes, NUM_PARAMETER_ARRAYS, PARAMETERS_TYPE);
+	model.params_memory = float_cpu_malloc_and_point(&(model.params), model.param_sizes, NUM_PARAMETER_ARRAYS, PARAMETERS_TYPE, RANDOM_V);
 
 	if (model.params_memory == NULL)
 	{
