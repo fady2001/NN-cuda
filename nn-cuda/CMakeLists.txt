@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 # this has to be set before project()
- if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
- set(CMAKE_CUDA_ARCHITECTURES 86)
- endif()
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 86)
+endif()
+
 project(nn-cuda LANGUAGES CXX CUDA)
 
 # Set C++14 as standard for the host code
@@ -12,9 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add the path to the include directory and other necessary directories
 include_directories(include vendor)
-
 # Collect all .cu files in the nn-cuda directory
-file(GLOB CUDA_FILES nn-cuda/*.cu)
+#file(GLOB CUDA_FILES nn-cuda/*.cu)
 
 # Collect all .cpp files in the nn-cuda directory
 file(GLOB CPP_FILES nn-cuda/common.cu)
