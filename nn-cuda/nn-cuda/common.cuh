@@ -1,11 +1,11 @@
 #pragma once
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <cuda_runtime.h>
 #include "../vendor/npy.hpp"
-#include <vector>
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <vector>
 
 // Function declarations
 template <class T>
@@ -26,9 +26,8 @@ struct NBArray
 	int n_dims;
 	int *shape;
 };
-template <class T>
-void write_npy(const char *filename, const T *data, unsigned int n_dims, const unsigned long *shape);
-
+void write_npy(const char *filename, const float *data, unsigned int n_dims, const unsigned long *shape);
+void write_npy(const char *filename, const int *data, unsigned int n_dims, const unsigned long *shape);
 void print_2D_Matrix(float *matrix, const char *name, int rows, int cols);
 
 template <class T>
@@ -36,3 +35,6 @@ void validate_result(T *device_result, const T *cpu_reference, const char *name,
 
 template <class Kernel, class... KernelArgs>
 float benchmark_kernel(int repeats, Kernel kernel, KernelArgs &&...kernel_args);
+
+void *malloc_check(size_t size, const char *file, int line);
+#define mallocCheck(size) malloc_check(size, __FILE__, __LINE__)

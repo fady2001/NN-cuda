@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.cuh"
 
 template <class T>
 __host__ __device__ T ceil_div(T dividend, T divisor)
@@ -63,11 +63,15 @@ float *make_ones_float(size_t N)
     return arr;
 }
 
-template <class T>
 void write_npy(const char *filename, const float *data, unsigned int n_dims, const unsigned long *shape)
 {
     std::string full_path = "..\\with-torch-tests\\" + std::string(filename);
-    npy::SaveArrayAsNumpy<T>(full_path, false, n_dims, shape, data);
+    npy::SaveArrayAsNumpy(full_path, false, n_dims, shape, data);
+}
+void write_npy(const char *filename, const int *data, unsigned int n_dims, const unsigned long *shape)
+{
+    std::string full_path = "..\\with-torch-tests\\" + std::string(filename);
+    npy::SaveArrayAsNumpy(full_path, false, n_dims, shape, data);
 }
 
 void print_2D_Matrix(float *matrix, const char *name, int rows, int cols)
@@ -131,4 +135,19 @@ float benchmark_kernel(int repeats, Kernel kernel, KernelArgs &&...kernel_args)
     cudaCheck(cudaEventElapsedTime(&elapsed_time, start, stop));
 
     return elapsed_time / repeats;
+}
+
+void *malloc_check(size_t size, const char *file, int line)
+{
+    void *ptr = malloc(size);
+    if (ptr == NULL)
+    {
+        fprintf(stderr, "Error: Memory allocation failed at %s:%d\n", file, line);
+        fprintf(stderr, "Error details:\n");
+        fprintf(stderr, "  File: %s\n", file);
+        fprintf(stderr, "  Line: %d\n", line);
+        fprintf(stderr, "  Size: %zu bytes\n", size);
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
 }
