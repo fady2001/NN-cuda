@@ -94,7 +94,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cpu_main.cpp" />
-    <ClCompile Include="ModelMemoryHandler.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

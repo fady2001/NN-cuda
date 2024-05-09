@@ -11,7 +11,7 @@ int main()
     unsigned long B = 30;
     unsigned long H1 = 100;
     unsigned long C = 10;
-    ModelMemoryHandler model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
+    ModelMemoryHandler<float> model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
 
     // create host memory of random numbers
     float *inp = make_random_float(B * input_dim);
@@ -27,12 +27,12 @@ int main()
 #endif
 
     // run CPU
-    ModelLayers::linear_layer_forward_cpu(inp, model.GetParams().ln1w, model.GetParams().ln1b, model.GetActivations().ln1, B, input_dim, H1);
-    ModelLayers::relu_forward_cpu(model.GetActivations().ln1, model.GetActivations().a1, B, H1);
-    ModelLayers::linear_layer_forward_cpu(model.GetActivations().a1, model.GetParams().ln2w, model.GetParams().ln2b, model.GetActivations().ln2, B, H1, C);
-    ModelLayers::softmax_cpu(model.GetActivations().ln2, model.GetActivations().sm, B, C);
-    ModelLayers::cross_entropy_cpu(model.GetActivations().loss, model.GetActivations().sm, target, B, C);
-    ModelLayers::array_sum_cpu(model.GetActivations().reduced_loss, model.GetActivations().loss, B);
+    ModelLayers::linear_layer_forward_cpu<float>(inp, model.GetParams().ln1w, model.GetParams().ln1b, model.GetActivations().ln1, B, input_dim, H1);
+    ModelLayers::relu_forward_cpu<float>(model.GetActivations().ln1, model.GetActivations().a1, B, H1);
+    ModelLayers::linear_layer_forward_cpu<float>(model.GetActivations().a1, model.GetParams().ln2w, model.GetParams().ln2b, model.GetActivations().ln2, B, H1, C);
+    ModelLayers::softmax_cpu<float>(model.GetActivations().ln2, model.GetActivations().sm, B, C);
+    ModelLayers::cross_entropy_cpu<float>(model.GetActivations().loss, model.GetActivations().sm, target, B, C);
+    ModelLayers::array_sum_cpu<float>(model.GetActivations().reduced_loss, model.GetActivations().loss, B);
 
     // print results
     printf("Reduced Loss: %f\n", *model.GetActivations().reduced_loss);
