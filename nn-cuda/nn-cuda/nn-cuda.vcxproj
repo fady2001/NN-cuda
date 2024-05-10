@@ -90,6 +90,8 @@
   <ItemGroup>
     <ClInclude Include="common.cuh" />
     <ClInclude Include="ModelLayers.hpp" />
+    <ClInclude Include="ModelLayersKernels.cuh" />
+    <ClInclude Include="ModelLayersKernelsLaunchers.cuh" />
     <ClInclude Include="ModelMemoryHandler.hpp" />
   </ItemGroup>
   <ItemGroup>
