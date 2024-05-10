@@ -1,9 +1,10 @@
 #include "common.cuh"
 #include <math.h>
-#define TEST_PYTORTH true
 #include "device_launch_parameters.h"
 #include "ModelMemoryHandler.cuh"
 #include "ModelLayersKernelsLaunchers.cuh"
+#define TEST_PYTORTH true
+#define TYPE double
 
 int main()
 {
@@ -11,10 +12,10 @@ int main()
 	unsigned long B = 2;
 	unsigned long H1 = 5;
 	unsigned long C = 3;
-	ModelMemoryHandler<float> h_model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
+	ModelMemoryHandler<TYPE> h_model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
 
 	// create host memory of random numbers
-	float* inp = make_random_float(B * input_dim);
+	TYPE* inp = make_random_float<TYPE>(B * input_dim);
 	int* target = make_random_int(B, int(C));
 
 #if TEST_PYTORTH
@@ -30,15 +31,15 @@ int main()
 	cudaCheck(cudaSetDevice(deviceIdx));
 
 	// move to GPU
-	ModelMemoryHandler<float> d_model;
+	ModelMemoryHandler<TYPE> d_model;
 	h_model.model_to_cuda(&d_model);
 
 	// move input and target to GPU
-	float* d_inp;
+	TYPE* d_inp;
 	int* d_target;
-	cudaCheck(cudaMalloc(&d_inp, B * input_dim * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_inp, B * input_dim * sizeof(TYPE)));
 	cudaCheck(cudaMalloc(&d_target, B * sizeof(int)));
-	cudaCheck(cudaMemcpy(d_inp, inp, B * input_dim * sizeof(float), cudaMemcpyHostToDevice));
+	cudaCheck(cudaMemcpy(d_inp, inp, B * input_dim * sizeof(TYPE), cudaMemcpyHostToDevice));
 	cudaCheck(cudaMemcpy(d_target, target, B * sizeof(int), cudaMemcpyHostToDevice));
 
 	// run the model
@@ -52,8 +53,8 @@ int main()
 	// cudasynchronize();
 	cudaCheck(cudaDeviceSynchronize());
 	// copy the loss to the host
-	float* reduced_loss = (float*)malloc(sizeof(float));
-	cudaCheck(cudaMemcpy(reduced_loss, d_model.GetActivations().reduced_loss, sizeof(float), cudaMemcpyDeviceToHost));
+	TYPE* reduced_loss = (TYPE*)malloc(sizeof(TYPE));
+	cudaCheck(cudaMemcpy(reduced_loss, d_model.GetActivations().reduced_loss, sizeof(TYPE), cudaMemcpyDeviceToHost));
 	printf("Loss: %f\n", *reduced_loss);
 	return 0;
 }

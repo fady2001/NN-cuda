@@ -100,13 +100,13 @@ public:
 		switch (initial_value)
 		{
 		case ZEROS_V:
-			memory = make_zeros_float(total_size);
+			memory = make_zeros_float<T>(total_size);
 			break;
 		case ONES_V:
-			memory = make_ones_float(total_size);
+			memory = make_ones_float<T>(total_size);
 			break;
 		case RANDOM_V:
-			memory = make_random_float(total_size);
+			memory = make_random_float<T>(total_size);
 			break;
 		}
 		if (memory == nullptr)
@@ -130,13 +130,13 @@ public:
 		switch (initial_value)
 		{
 		case ZEROS_V:
-			memory = make_zeros_float(total_size);
+			memory = make_zeros_float<T>(total_size);
 			break;
 		case ONES_V:
-			memory = make_ones_float(total_size);
+			memory = make_ones_float<T>(total_size);
 			break;
 		case RANDOM_V:
-			memory = make_random_float(total_size);
+			memory = make_random_float<T>(total_size);
 			break;
 		}
 		if (memory == nullptr)
@@ -196,23 +196,21 @@ public:
 		}
 	}
 
-	ModelMemoryHandler<T>* model_to_cuda(ModelMemoryHandler<T>* d_model)
+	void model_to_cuda(ModelMemoryHandler<T>* d_model)
 	{
 		d_model->isCuda = true;
 		unsigned long total_param_size = d_model->InitializeModelParametersSizes(this);
 
-		cudaCheck(cudaMalloc(&d_model->params_memory, total_param_size * sizeof(float)));
-		cudaCheck(cudaMemcpy(d_model->params_memory, this->params_memory, total_param_size * sizeof(float), cudaMemcpyHostToDevice));
+		cudaCheck(cudaMalloc(&d_model->params_memory, total_param_size * sizeof(T)));
+		cudaCheck(cudaMemcpy(d_model->params_memory, this->params_memory, total_param_size * sizeof(T), cudaMemcpyHostToDevice));
 		d_model->AssignParamsMemory();
 
 		// copy activations
 		unsigned long total_activation_size = d_model->InitializeModelActivationSizes(this);
 		
-		cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(float)));
-		cudaCheck(cudaMemcpy(d_model->activations_memory, this->activations_memory, total_activation_size * sizeof(float), cudaMemcpyHostToDevice));
+		cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(T)));
+		cudaCheck(cudaMemcpy(d_model->activations_memory, this->activations_memory, total_activation_size * sizeof(T), cudaMemcpyHostToDevice));
 		d_model->AssignActivationsMemory();
-		
-		return d_model;
 	}
 
 	~ModelMemoryHandler()
