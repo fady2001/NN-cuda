@@ -92,7 +92,7 @@
     <ClInclude Include="ModelLayers.hpp" />
     <ClInclude Include="ModelLayersKernels.cuh" />
     <ClInclude Include="ModelLayersKernelsLaunchers.cuh" />
-    <ClInclude Include="ModelMemoryHandler.hpp" />
+    <ClInclude Include="ModelMemoryHandler.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cpu_main.cpp" />

@@ -2,7 +2,7 @@
 //#include <cmath>
 //#include "common.cuh"
 //#include "ModelLayers.hpp"
-//#include "ModelMemoryHandler.hpp"
+//#include "ModelMemoryHandler.cuh"
 //#define TEST_PYTORTH true
 //
 //int main()

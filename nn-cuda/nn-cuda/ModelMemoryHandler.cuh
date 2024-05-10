@@ -37,7 +37,7 @@ struct ModelActivation
 template<class T>
 class ModelMemoryHandler
 {
-private:
+public:
 	unsigned long param_sizes[NUM_PARAMETER_ARRAYS];
 	ModelParameters<T> params;
 	T* params_memory;
@@ -46,6 +46,8 @@ private:
 	ModelActivation<T> activations;
 	T* activations_memory;
 
+	bool isCuda;
+
 	void InitializeModelParametersSizes(unsigned long input_dim, unsigned long H1, unsigned long C)
 	{
 		param_sizes[0] = H1 * input_dim; // ln1w
@@ -53,6 +55,18 @@ private:
 		param_sizes[2] = C * H1;		 // ln2w
 		param_sizes[3] = C;				 // ln2b
 	}
+
+	unsigned long InitializeModelParametersSizes(ModelMemoryHandler* h_model)
+	{
+		unsigned long total_param_size = 0;
+		for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
+		{
+			total_param_size += h_model->param_sizes[i];
+			param_sizes[i] = h_model->param_sizes[i];
+		}
+		return total_param_size;
+	}
+
 	void InitializeModelActivationSizes(unsigned long B, unsigned long H1, unsigned long C)
 	{
 		activation_sizes[0] = B * H1; // ln1
@@ -62,6 +76,18 @@ private:
 		activation_sizes[4] = B;	  // loss
 		activation_sizes[5] = 1;	  // reduced_loss
 	}
+
+	unsigned long InitializeModelActivationSizes(ModelMemoryHandler* h_model)
+	{
+		unsigned long total_activation_size = 0;
+		for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
+		{
+			total_activation_size += h_model->activation_sizes[i];
+			activation_sizes[i] = h_model->activation_sizes[i];
+		}
+		return total_activation_size;
+	}
+
 	bool InitParametersMemory(INITIAL_VALUE_TYPE initial_value)
 	{
 		unsigned long total_size = 0;
@@ -91,6 +117,7 @@ private:
 		params_memory = memory;
 		return true;
 	}
+	
 	bool InitActivationsMemory(INITIAL_VALUE_TYPE initial_value)
 	{
 		unsigned long total_size = 0;
@@ -121,9 +148,12 @@ private:
 		return true;
 	}
 
-public:
-	ModelMemoryHandler(unsigned long input_dim = 3, unsigned long B = 30, unsigned long H1 = 100, unsigned long C = 10, INITIAL_VALUE_TYPE PARAMETERS_INIT = ZEROS_V, INITIAL_VALUE_TYPE ACTIVATION_INIT = ZEROS_V)
+//public:
+	ModelMemoryHandler(){ isCuda = false; }
+
+	ModelMemoryHandler(unsigned long input_dim, unsigned long B, unsigned long H1, unsigned long C, INITIAL_VALUE_TYPE PARAMETERS_INIT = ZEROS_V, INITIAL_VALUE_TYPE ACTIVATION_INIT = ZEROS_V)
 	{
+		isCuda = false; // default
 		InitializeModelParametersSizes(input_dim, H1, C);
 		InitializeModelActivationSizes(B, H1, C);
 		InitParametersMemory(PARAMETERS_INIT);
@@ -131,8 +161,11 @@ public:
 		InitActivationsMemory(ACTIVATION_INIT);
 		AssignActivationsMemory();
 	}
+
 	ModelParameters<T> GetParams() { return params; }
-	ModelActivation<T> GetActivations() {return activations;}
+
+	ModelActivation<T> GetActivations() { return activations; }
+
 	void AssignParamsMemory()
 	{
 		T** ptrs[] = { &params.ln1w,
@@ -146,6 +179,7 @@ public:
 			memory_iterator += param_sizes[i];
 		}
 	}
+	
 	void AssignActivationsMemory()
 	{
 		T** ptrs[] = { &activations.ln1,
@@ -161,9 +195,38 @@ public:
 			memory_iterator += activation_sizes[i];
 		}
 	}
+	/*#################### NOT WORKINNNNNGGGGG#############################*/
+	ModelMemoryHandler<T> model_to_cuda()
+	{
+		ModelMemoryHandler<T> d_model;
+		d_model.isCuda = true;
+		unsigned long total_param_size = d_model.InitializeModelParametersSizes(this);
+		
+		cudaCheck(cudaMalloc(&d_model.params_memory, total_param_size * sizeof(T)));
+		cudaCheck(cudaMemcpy(d_model.params_memory, this->params_memory, total_param_size * sizeof(T), cudaMemcpyHostToDevice));
+		// point to the copied memory
+		d_model.AssignParamsMemory();
+		
+		// copy activations
+		unsigned long total_activation_size = d_model.InitializeModelActivationSizes(this);
+		cudaCheck(cudaMalloc(&d_model.activations_memory, total_activation_size * sizeof(T)));
+		cudaCheck(cudaMemcpy(d_model.activations_memory, this->activations_memory, total_activation_size * sizeof(T), cudaMemcpyHostToDevice));
+
+		d_model.AssignActivationsMemory();
+		return d_model;
+	}
+
 	~ModelMemoryHandler()
 	{
-		free(ModelMemoryHandler::params_memory);
-		free(ModelMemoryHandler::activations_memory);
+		if (isCuda)
+		{
+			cudaFree(params_memory);
+			cudaFree(activations_memory);
+		}
+		else
+		{
+			free(params_memory);
+			free(activations_memory);
+		}
 	}
 };
