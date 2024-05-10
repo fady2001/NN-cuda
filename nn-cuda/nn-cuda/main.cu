@@ -5,58 +5,6 @@
 #include "ModelMemoryHandler.cuh"
 #include "ModelLayersKernelsLaunchers.cuh"
 
-template<class T = float>
-void model_to_cuda(ModelMemoryHandler<T>* d_model, ModelMemoryHandler<T>* h_model)
-{
-	// copy parameters
-	unsigned long total_param_size = 0;
-	for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
-	{
-		total_param_size += h_model->param_sizes[i];
-		d_model->param_sizes[i] = h_model->param_sizes[i];
-	}
-	cudaCheck(cudaMalloc(&d_model->params_memory, total_param_size * sizeof(float)));
-	cudaCheck(cudaMemcpy(d_model->params_memory, h_model->params_memory, total_param_size * sizeof(float), cudaMemcpyHostToDevice));
-	// point to the copied memory
-	float* memory_iterator = (float*)d_model->params_memory;
-
-	ModelParameters<T>* params = &d_model->params;
-	float** ptrs[] = { &params->ln1w,
-					  &params->ln1b,
-					  &params->ln2w,
-					  &params->ln2b };
-	for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
-	{
-		*(ptrs[i]) = memory_iterator;
-		memory_iterator += h_model->param_sizes[i];
-	}
-
-	// copy activations
-	unsigned long total_activation_size = 0;
-	for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
-	{
-		total_activation_size += h_model->activation_sizes[i];
-		d_model->activation_sizes[i] = h_model->activation_sizes[i];
-	}
-	cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(float)));
-	cudaCheck(cudaMemcpy(d_model->activations_memory, h_model->activations_memory, total_activation_size * sizeof(float), cudaMemcpyHostToDevice));
-
-	memory_iterator = (float*)d_model->activations_memory;
-	ModelActivation<T>* activations = &d_model->activations;
-	float** ptrs2[] = { &activations->ln1,
-					   &activations->a1,
-					   &activations->ln2,
-					   &activations->sm,
-					   &activations->loss,
-					   &activations->reduced_loss };
-	for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
-	{
-		*(ptrs2[i]) = memory_iterator;
-		memory_iterator += h_model->activation_sizes[i];
-	}
-}
-
-
 int main()
 {
 	unsigned long input_dim = 3;
@@ -82,9 +30,8 @@ int main()
 	cudaCheck(cudaSetDevice(deviceIdx));
 
 	// move to GPU
-	//ModelMemoryHandler<float> d_model = h_model.model_to_cuda();
 	ModelMemoryHandler<float> d_model;
-	model_to_cuda(&d_model, &h_model);
+	h_model.model_to_cuda(&d_model);
 
 	// move input and target to GPU
 	float* d_inp;
@@ -108,4 +55,5 @@ int main()
 	float* reduced_loss = (float*)malloc(sizeof(float));
 	cudaCheck(cudaMemcpy(reduced_loss, d_model.GetActivations().reduced_loss, sizeof(float), cudaMemcpyDeviceToHost));
 	printf("Loss: %f\n", *reduced_loss);
+	return 0;
 }
