@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "D:/academic_material/fourth_year/second_semester/PC/repos/NN-cuda/nn-cuda/nn-cuda")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "D:/academic_material/fourth_year/second_semester/PC/repos/NN-cuda/nn-cuda/nn-cuda")
 
 # this has to be set before project()
-if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 86)
-endif ()
+endif()
 
 project(nn-cuda LANGUAGES CXX CUDA)
-#set flags for nvcc
-#set(CMAKE_CUDA_FLAGS "-Wall")
 
+# set flags for nvcc
+# set(CMAKE_CUDA_FLAGS "-Wall")
 
 # Set C++14 as standard for the host code
 set(CMAKE_CXX_STANDARD 17)
@@ -24,13 +24,15 @@ include_directories(include vendor)
 
 # Collect all .cpp files in the nn-cuda directory
 file(GLOB CPP_FILES nn-cuda/*.cpp)
+
 #
 # Combine CUDA and C++ files into a single list
 set(SOURCES ${CPP_FILES})
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(MatMul "nn-cuda/MatMul.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/linear_backward.cu" ${SOURCES})
 
 # If you have CUDA libraries to link
 # target_link_libraries(nn-cuda ${CUDA_LIBRARIES})
+# add_executable(relu nn-cuda/relu.cu)

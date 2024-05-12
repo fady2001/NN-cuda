@@ -1,7 +1,6 @@
 
 #include "common.hpp"
 #define TEST_PYTORTH true
-#define FLOAT_TYPE float
 #define uint unsigned int
 /**
  * @brief
@@ -36,26 +35,27 @@ __global__ void mat_mul(const float *A, const float *B, float *C, uint N,
   }
 }
 
-void mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
-                 uint M) {
-  for (uint i = 0; i < N; i++) {
-    for (uint j = 0; j < M; j++) {
-      float sum = 0;
-      for (uint k = 0; k < L; k++) {
-        sum += A[i * L + k] * B[k * M + j];
-      }
-      C[i * M + j] = sum;
+/**
+ * @brief
+ *  This performs reduction on a matrix
+ *  Matrix is B*M
+ *  The output is M
+ */
+__global__ void reduce_on_axis(const float *A, float *out, uint N, uint M,
+                               bool take_avg = false) {
+  // this maps one thread per column
+  // the grid size is (B,1,1)
+  uint j = threadIdx.x + blockIdx.x * blockDim.x;
+  if (j < M) {
+    float sum = 0;
+    for (uint k = 0; k < N; k++) {
+      sum += A[k * M + j];
+    }
+    out[j] = sum;
+    if (take_avg) {
+      out[j] /= (float)N;
     }
   }
-}
-float *transpose(const float *A, uint N, uint M) {
-  float *out = (float *)malloc(N * M * sizeof(float));
-  for (uint i = 0; i < N; i++) {
-    for (uint j = 0; j < M; j++) {
-      out[j * N + i] = A[i * M + j];
-    }
-  }
-  return out;
 }
 
 void runMatMull(float *A, float *B, float *C, uint N, uint L, uint M,
@@ -66,84 +66,90 @@ void runMatMull(float *A, float *B, float *C, uint N, uint L, uint M,
   cudaCheck(cudaDeviceSynchronize());
 }
 
+void runReduceOnAxisKernel(float *d_A, float *d_out, uint N, uint M,
+                           int block_size, bool take_avg = false) {
+  // we will use 256 threads per block
+  uint grid_size = (M + block_size - 1) / block_size;
+  reduce_on_axis<<<grid_size, block_size>>>(d_A, d_out, N, M, take_avg);
+  cudaCheck(cudaPeekAtLastError());
+  cudaCheck(cudaDeviceSynchronize());
+}
+
+void runBackward(float *d_inp, float *d_weight, float *d_up_grad, float *d_dLdw,
+                 float *d_dLdb, float *d_dLdx, uint B, uint N, uint M,
+                 int sqrt_block_size) {
+  // compute dL/dW = (dL/dout).T * x
+  runMatMull(d_up_grad, d_inp, d_dLdw, M, B, N, true, false, sqrt_block_size);
+  // compute dL/db = avg(dL/dout, axis=0)
+  runReduceOnAxisKernel(d_up_grad, d_dLdb, B, M, sqrt_block_size, false);
+  // compute dL/dx = dL/dout * W
+  runMatMull(d_up_grad, d_weight, d_dLdx, B, M, N, false, false,
+             sqrt_block_size);
+}
+
+void read_cuda(float *d_out, uint N, uint M, const char *name) {
+  float *out = (float *)malloc(N * M * sizeof(float));
+  cudaCheck(
+      cudaMemcpy(out, d_out, N * M * sizeof(float), cudaMemcpyDeviceToHost));
+  write_npy(name, out, 2, new unsigned long[2]{N, M});
+  free(out);
+}
+
 int main() {
   srand(0);
-  const size_t B = 100, N = 100, M = 30;
+  const size_t B = 300, N = 1000, M = 350;
 
   int deviceIdx = 0;
   cudaCheck(cudaSetDevice(deviceIdx));
 
-  // create host memory of random numbers
-  FLOAT_TYPE *out = (FLOAT_TYPE *)malloc(B * M * sizeof(float));
-  FLOAT_TYPE *inp = make_random_float<FLOAT_TYPE>(B * N);
-  FLOAT_TYPE *weight = make_random_float<FLOAT_TYPE>(M * N);
-  FLOAT_TYPE *bias = make_random_float<FLOAT_TYPE>(M);
+  float *inp = make_random_float(B * N);
+  float *weight = make_random_float(M * N);
+  float *bias = make_random_float(M);
+  float *up_grad = make_random_float(B * M); // dL/dout
 
 // write arrays to npy files if you want to test with torch
 #if TEST_PYTORTH
-  write_npy("linear-layer\\X_c.npy", inp, 2, new unsigned long[2]{B, N});
-  write_npy("linear-layer\\W_C.npy", weight, 2, new unsigned long[2]{M, N});
-  write_npy("linear-layer\\bias_C.npy", bias, 1, new unsigned long[1]{M});
+  write_npy("linear-backward\\X_c.npy", inp, 2, new unsigned long[2]{B, N});
+  write_npy("linear-backward\\W_C.npy", weight, 2, new unsigned long[2]{M, N});
+  write_npy("linear-backward\\bias_C.npy", bias, 1, new unsigned long[1]{M});
+  write_npy("linear-backward\\up_grad.npy", up_grad, 2,
+            new unsigned long[2]{B, M});
 #endif
 
   // move to GPU
-  float *d_out;
   float *d_inp;
   float *d_weight;
-  float *d_bias;
-  cudaCheck(cudaMalloc(&d_out, B * M * sizeof(float)));
+  //  float *d_bias;
+  float *d_up_grad;
+  // three gradients we need to compute
+
+  float *d_dLdw;
+  float *d_dLdb;
+  float *d_dLdx;
+
   cudaCheck(cudaMalloc(&d_inp, B * N * sizeof(float)));
   cudaCheck(cudaMalloc(&d_weight, M * N * sizeof(float)));
-  cudaCheck(cudaMalloc(&d_bias, M * sizeof(float)));
+  //  cudaCheck(cudaMalloc(&d_bias, M * sizeof(float)));
+  cudaCheck(cudaMalloc(&d_up_grad, B * M * sizeof(float)));
   cudaCheck(
       cudaMemcpy(d_inp, inp, B * N * sizeof(float), cudaMemcpyHostToDevice));
   cudaCheck(cudaMemcpy(d_weight, weight, M * N * sizeof(float),
                        cudaMemcpyHostToDevice));
-  cudaCheck(
-      cudaMemcpy(d_bias, bias, M * sizeof(float), cudaMemcpyHostToDevice));
+  //  cudaCheck(
+  //      cudaMemcpy(d_bias, bias, M * sizeof(float), cudaMemcpyHostToDevice));
+  cudaCheck(cudaMemcpy(d_up_grad, up_grad, B * M * sizeof(float),
+                       cudaMemcpyHostToDevice));
 
-  linear_layer_forward_cpu(inp, weight, bias, out, B, N, M);
+  cudaCheck(cudaMalloc(&d_dLdw, M * N * sizeof(float)));
+  cudaCheck(cudaMalloc(&d_dLdb, M * sizeof(float)));
+  cudaCheck(cudaMalloc(&d_dLdx, B * N * sizeof(float)));
 
+  runBackward(d_inp, d_weight, d_up_grad, d_dLdw, d_dLdb, d_dLdx, B, N, M, 16);
 #if TEST_PYTORTH
-  write_npy("linear-layer\\out_C.npy", out, 2, new unsigned long[2]{B, M});
+  read_cuda(d_dLdw, M, N, "linear-backward\\dLdw.npy");
+  read_cuda(d_dLdb, M, 1, "linear-backward\\dLdb.npy");
+  read_cuda(d_dLdx, B, N, "linear-backward\\dLdx.npy");
 #endif
 
-  // print_2D_Matrix(out, "out", B, M);
-  int sqrt_block_sizes[] = {4, 8, 16, 32};
-  // first check the correctness of the kernel
-  for (int j = 0; j < sizeof(sqrt_block_sizes) / sizeof(int); j++) {
-    int sqrt_block_size = sqrt_block_sizes[j];
-    printf("Checking block size %d x %d.\n", sqrt_block_size, sqrt_block_size);
-    runKernel1(d_inp, d_weight, d_bias, d_out, B, N, M, sqrt_block_size);
-    //        validate_result(d_out, out, "out", B * M, 1e-4f);
-  }
-
-  printf("All results match. Starting benchmarks.\n\n");
-  //    printf("All results match. Starting benchmarks.\n\n");
-
-  //    for (int j = 0; j < sizeof(sqrt_block_sizes) / sizeof(int); j++)
-  //    {
-  //        int sqrt_block_size = sqrt_block_sizes[j];
-  //
-  //        int repeat_times = 100;
-  //        float elapsed_time = benchmark_kernel(repeat_times, runKernel1,
-  //        d_inp, d_weight, d_bias, d_out, B, N, M, sqrt_block_size);
-  //
-  //        // napkin math: estimate the flops achieved
-  //        // e.g. A100 40GB PCIe is advertised at 19.5 TFLOPS fp32
-  //        float tflops = (float)B * N * M * 2 / elapsed_time * 1e3f / 1e12f;
-  //        printf("sqrt_block_size %4d | time %.4f ms | tflops %.2f\n",
-  //        sqrt_block_size, elapsed_time, tflops);
-  //    }
-
-  // free memory
-  free(out);
-  free(inp);
-  free(weight);
-  free(bias);
-  cudaCheck(cudaFree(d_out));
-  cudaCheck(cudaFree(d_inp));
-  cudaCheck(cudaFree(d_weight));
-  cudaCheck(cudaFree(d_bias));
   return 0;
 }

@@ -3,3 +3,4 @@
 /.vs
 /.vscode
 /cmake-build-debug-visual-studio
+/with-torch-tests
