@@ -66,5 +66,6 @@
     "xmemory": "cpp",
     "xtr1common": "cpp",
     "xutility": "cpp"
-  }
+  },
+  "cmake.sourceDirectory": "D:/academic_material/fourth_year/second_semester/PC/repos/NN-cuda/nn-cuda"
 }
