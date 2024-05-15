@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "D:/academic_material/fourth_year/second_semester/PC/repos/NN-cuda/nn-cuda/nn-cuda")
 
 # this has to be set before project()
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 86)
-endif()
+endif ()
 
 project(nn-cuda LANGUAGES CXX CUDA)
 
@@ -27,11 +27,12 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 
 #
 # Combine CUDA and C++ files into a single list
-set(SOURCES ${CPP_FILES})
+set(SOURCES ${CPP_FILES}
+        nn-cuda/ModelMemoryHandler.cuh)
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/linear_backward.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/main.cu" ${SOURCES})
 
 # If you have CUDA libraries to link
 # target_link_libraries(nn-cuda ${CUDA_LIBRARIES})
