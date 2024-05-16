@@ -80,15 +80,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="array_sum.cu" />
-    <CudaCompile Include="common.cu" />
     <CudaCompile Include="crossEntropy.cu" />
+    <CudaCompile Include="linear_backward.cu" />
     <CudaCompile Include="linear_forward.cu" />
     <CudaCompile Include="main.cu" />
+    <CudaCompile Include="MatMul.cu" />
+    <CudaCompile Include="reduce_on_axis.cu" />
     <CudaCompile Include="relu.cu" />
+    <CudaCompile Include="SGD.cu" />
     <CudaCompile Include="softmax.cu" />
+    <CudaCompile Include="soft_cross_backward.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common.cuh" />
+    <ClInclude Include="common.hpp" />
     <ClInclude Include="ModelLayers.hpp" />
     <ClInclude Include="ModelLayersKernels.cuh" />
     <ClInclude Include="ModelLayersKernelsLaunchers.cuh" />
