@@ -27,7 +27,7 @@ __global__ void crossentropy_softmax_backward_kernel(T* down_grads, const T* pro
 
 // kernel launcher
 template<class T>
-void crossentropy_softmax_backward(T* down_grads, const T* probs, const T* targets, int N, int C, const int block_size) {
+void run_crossentropy_softmax_backward(T* down_grads, T* probs, int* targets, int N, int C,int block_size) {
 	const int grid_size = (N + block_size - 1) / block_size;
 	crossentropy_softmax_backward_kernel << <grid_size, block_size >> > (down_grads, probs, targets, N, C);
 	cudaCheck(cudaGetLastError());
@@ -62,8 +62,43 @@ int main()
 write_npy("cross-entropy-backward\\h_dlogits_after.npy", down_grads, 2, new unsigned long[2]{N, C});
 #endif
 
+	// GPU
+	float* d_down_grads;
+	float* d_probs;
+	int* d_targets;
+	cudaCheck(cudaMalloc(&d_down_grads, N * C * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_probs, N * C * sizeof(float)));
+	cudaCheck(cudaMalloc(&d_targets, N * sizeof(int)));
+
+	cudaCheck(cudaMemcpy(d_down_grads, down_grads, N * C * sizeof(float), cudaMemcpyHostToDevice));
+	cudaCheck(cudaMemcpy(d_probs, h_probs, N * C * sizeof(float), cudaMemcpyHostToDevice));
+	cudaCheck(cudaMemcpy(d_targets, h_targets, N * sizeof(int), cudaMemcpyHostToDevice));
+
+	int block_sizes[] = { 32, 64, 128, 256, 512, 1024 };
+	// first check the correctness of the kernel
+	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+		int block_size = block_sizes[j];
+		printf("Checking block size %d.\n", block_size);
+		run_crossentropy_softmax_backward(d_down_grads, d_probs, d_targets, N, C, block_size);
+		validate_result(d_down_grads, down_grads, "out", N * C, 1e-4f);
+	}
+
+	printf("All results match. Starting benchmarks.\n\n");
+	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+		int block_size = block_sizes[j];
+
+		int repeat_times = 100;
+		float elapsed_time = benchmark_kernel(repeat_times, run_crossentropy_softmax_backward<float>, d_down_grads, d_probs, d_targets, N, C, block_sizes[j]);
+
+		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
+	}
+
+	// free memory
 	free(down_grads);
 	free(h_targets);
 	free(h_probs);
+	cudaFree(d_down_grads);
+	cudaFree(d_probs);
+	cudaFree(d_targets);
 	return 0;
 }
