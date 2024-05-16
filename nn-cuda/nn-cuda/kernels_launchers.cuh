@@ -12,21 +12,21 @@ public:
     cudaCheck(cudaDeviceSynchronize());
   }
 
-  static void run_relu_kernel(float *input, float *output, uint B, uint N,
-                              uint sqrt_block_size) {
+  static void run_relu_kernel(float *input, float *output, int B, int N,
+                              int sqrt_block_size) {
     dim3 block(sqrt_block_size, sqrt_block_size);
-    dim3 grid((B + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+    dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
     relu_forward<<<grid, block>>>(input, output, B, N);
     cudaCheck(cudaDeviceSynchronize());
   }
+
   static void runReluBackward(float *input, float *upGrad, float *downGrad,
                               int B, int N, int sqrt_block_size) {
     dim3 block(sqrt_block_size, sqrt_block_size);
-    dim3 grid((B + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+    dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
     relu_backward<<<grid, block>>>(input, upGrad, downGrad, B, N);
     cudaCheck(cudaDeviceSynchronize());
   }
-
   static void run_softmax_kernel(const float *input, float *output, uint N,
                                  uint C, uint block_size) {
     int num_blocks = (N + block_size - 1) / block_size;

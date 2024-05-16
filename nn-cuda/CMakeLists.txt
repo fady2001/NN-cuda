@@ -29,9 +29,7 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 #
 # Combine CUDA and C++ files into a single list
 set(SOURCES ${CPP_FILES}
-        nn-cuda/ModelMemoryHandler.cuh
-        nn-cuda/matmuls_kernels.cuh
-        nn-cuda/main.cu)
+        nn-cuda/kernels_launchers.cuh)
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})

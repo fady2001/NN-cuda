@@ -48,9 +48,9 @@ __global__ void relu_forward(T *input, T *output, uint B, uint N) {
   uint col = blockIdx.x * blockDim.x + threadIdx.x;
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
 
-  if (row < B && col < N) {
+  if (col < N && row < B) {
     uint idx = row * N + col;
-    output[idx] = input[idx] > 0 ? input[idx] : 0;
+    output[idx] = fmaxf(0.0f, input[idx]);
   }
 }
 

@@ -9,16 +9,26 @@
  * the number of elements per batch.
  * @param output: Output tensor of the same shape as the input.
  */
-__global__ void relu_forward(float *input, float *output, int B, int N) {
+/**
+ * @brief
+ *  This function performs the forward pass of a ReLU activation function.
+ *
+ * @param input: Input tensor of shape (B, N) where B is the batch size and N is
+ * the number of elements per batch.
+ * @param output: Output tensor of the same shape as the input.
+ */
+template <class T>
+__global__ void relu_forward(T *input, T *output, uint B, uint N) {
   // This maps one thread to one element in the input.
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  uint col = blockIdx.x * blockDim.x + threadIdx.x;
+  uint row = blockIdx.y * blockDim.y + threadIdx.y;
 
-  if (i < B && j < N) {
-    int idx = i * N + j;
+  if (col < N && row < B) {
+    uint idx = row * N + col;
     output[idx] = fmaxf(0.0f, input[idx]);
   }
 }
+
 void relu_forward_cpu(float *input, float *output, int B, int N) {
   for (int i = 0; i < B; i++) {
     for (int j = 0; j < N; j++) {
@@ -36,21 +46,20 @@ void relu_forward_cpu(float *input, float *output, int B, int N) {
  * @param grad_input: Gradient tensor to propagate back.
  */
 __global__ void relu_backward(float *input, float *up_grad, float *down_grad,
-                              int B, int N) {
+                              uint B, uint N) {
   // This maps one thread to one element in the input.
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  uint col = blockIdx.x * blockDim.x + threadIdx.x;
+  uint row = blockIdx.y * blockDim.y + threadIdx.y;
 
-  if (i < B && j < N) {
-    int idx = i * N + j;
+  if (col < N && row < B) {
+    uint idx = row * N + col;
     down_grad[idx] = input[idx] > 0 ? up_grad[idx] : 0;
   }
 }
-
 void relu_backward_cpu(float *input, float *grad_output, float *grad_input,
                        int B, int N) {
   for (int i = 0; i < B; i++) {
-    for (int j = N - 1; j >= 0; j--) {
+    for (int j = 0; j < N; j++) {
       int idx = i * N + j;
       grad_input[idx] = input[idx] > 0 ? grad_output[idx] : 0;
     }
@@ -60,30 +69,22 @@ void relu_backward_cpu(float *input, float *grad_output, float *grad_input,
 void run_relu_kernel(float *input, float *output, int B, int N,
                      int sqrt_block_size) {
   dim3 block(sqrt_block_size, sqrt_block_size);
-  dim3 grid((B + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+  dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
   relu_forward<<<grid, block>>>(input, output, B, N);
   cudaCheck(cudaDeviceSynchronize());
 }
 
-void runKernel2(float *input, float *grad_output, float *grad_input, int B,
-                int N, int sqrt_block_size) {
+void runReluBackward(float *input, float *upGrad, float *downGrad, int B, int N,
+                     int sqrt_block_size) {
   dim3 block(sqrt_block_size, sqrt_block_size);
-  dim3 grid((B + block.x - 1) / block.x, (N + block.y - 1) / block.y);
-  relu_backward<<<grid, block>>>(input, grad_output, grad_input, B, N);
-  cudaCheck(cudaDeviceSynchronize());
-}
-
-void runReluBackward(float *input, float *grad_output, float *grad_input, int B,
-                     int N, int sqrt_block_size) {
-  dim3 block(sqrt_block_size, sqrt_block_size);
-  dim3 grid((B + block.x - 1) / block.x, (N + block.y - 1) / block.y);
-  relu_backward<<<grid, block>>>(input, grad_output, grad_input, B, N);
+  dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
+  relu_backward<<<grid, block>>>(input, upGrad, downGrad, B, N);
   cudaCheck(cudaDeviceSynchronize());
 }
 
 int main() {
   srand(0);
-  const unsigned long B = 100, N = 100;
+  const unsigned int B = 250, N = 250;
 
   int deviceIdx = 0;
   cudaCheck(cudaSetDevice(deviceIdx));
@@ -95,10 +96,9 @@ int main() {
   float *inp = make_random_float(B * N);
 
 #if TEST_PYTORTH
-  write_npy("relu-layer\\X_relu.npy", inp, 2,
-            reinterpret_cast<const unsigned long *>(new size_t[2]{B, N}));
+  write_npy("relu-layer\\X_relu.npy", inp, 2, (new unsigned long[2]{B, N}));
   write_npy("relu-layer\\up_grad_relu.npy", grad_output, 2,
-            reinterpret_cast<const unsigned long *>(new size_t[2]{B, N}));
+            (new unsigned long[2]{B, N}));
 #endif
 
   // Move to GPU
@@ -117,10 +117,9 @@ int main() {
   relu_backward_cpu(inp, grad_output, grad_input, B, N);
 
 #if TEST_PYTORTH
-  write_npy("relu-layer\\out_relu.npy", out, 2,
-            reinterpret_cast<const unsigned long *>(new size_t[2]{B, N}));
+  write_npy("relu-layer\\out_relu.npy", out, 2, new unsigned long[2]{B, N});
   write_npy("relu-layer\\down_grad_relu.npy", grad_input, 2,
-            reinterpret_cast<const unsigned long *>(new size_t[2]{B, N}));
+            new unsigned long[2]{B, N});
 #endif
 
   int sqrt_block_sizes[] = {4, 8, 16, 32};
@@ -132,7 +131,7 @@ int main() {
     run_relu_kernel(d_inp, d_out, B, N, sqrt_block_size);
     validate_result(d_out, out, "out", B * N, 1e-4f);
 
-    runKernel2(d_inp, d_grad_output, d_grad_input, B, N, sqrt_block_size);
+    runReluBackward(d_inp, d_grad_output, d_grad_input, B, N, sqrt_block_size);
     validate_result(d_grad_input, grad_input, "grad_in", B * N, 1e-4f);
   }
 
@@ -146,7 +145,7 @@ int main() {
     float elapsed_time1 = benchmark_kernel(repeat_times, run_relu_kernel, d_inp,
                                            d_out, B, N, sqrt_block_size);
     float elapsed_time2 =
-        benchmark_kernel(repeat_times, runKernel2, d_inp, d_grad_output,
+        benchmark_kernel(repeat_times, runReluBackward, d_inp, d_grad_output,
                          d_grad_input, B, N, sqrt_block_size);
 
     float tflops1 = (float)B * N * 1 / elapsed_time1 * 1e3f / 1e12f;
