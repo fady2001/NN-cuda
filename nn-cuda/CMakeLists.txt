@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "D:/academic_material/fourth_year/second_semester/PC/repos/NN-cuda/nn-cuda/nn-cuda")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./NN-cuda/nn-cuda/nn-cuda")
 
 # this has to be set before project()
 if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)

@@ -28,13 +28,13 @@ struct ModelActivation {
 
 class ModelMemoryHandler {
 public:
-  unsigned long param_sizes[NUM_PARAMETER_ARRAYS];
-  ModelParameters params;
-  float *params_memory;
+  unsigned long param_sizes[NUM_PARAMETER_ARRAYS]{};
+  ModelParameters params{};
+  float *params_memory{};
 
-  unsigned long activation_sizes[NUM_ACTIVATION_ARRAYS];
-  ModelActivation activations;
-  float *activations_memory;
+  unsigned long activation_sizes[NUM_ACTIVATION_ARRAYS]{};
+  ModelActivation activations{};
+  float *activations_memory{};
 
   bool isCuda;
 
