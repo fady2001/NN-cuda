@@ -90,7 +90,7 @@ write_npy("cross-entropy-backward\\h_dlogits_after.npy", down_grads, 2, new unsi
 		int repeat_times = 100;
 		float elapsed_time = benchmark_kernel(repeat_times, run_crossentropy_softmax_backward<float>, d_down_grads, d_probs, d_targets, N, C, block_sizes[j]);
 
-		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
+		printf("block_size %4d | time %.4f ms | per token %.2f µs\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
 	}
 
 	// free memory

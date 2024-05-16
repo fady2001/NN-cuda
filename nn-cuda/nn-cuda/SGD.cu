@@ -71,7 +71,7 @@
 
 // 		int repeat_times = 100;
 //         float elapsed_time = benchmark_kernel(repeat_times, SGD_run_kernel, d_params_memory, d_grads_memory, num_parameters, 1e-3, 0.0, block_size);
-// 		printf("block_size %4d | time %.4f ms | per token %.2f �s\n", block_size, elapsed_time, elapsed_time * 1'000 / (num_parameters));
+// 		printf("block_size %4d | time %.4f ms | per token %.2f µs\n", block_size, elapsed_time, elapsed_time * 1'000 / (num_parameters));
 // 	}
 
 // 	//free memory
