@@ -55,25 +55,25 @@ struct downstreamGradients
 class ModelMemoryHandler
 {
 private:
-  unsigned long param_sizes[NUM_PARAMETER_ARRAYS]{};
+  uint param_sizes[NUM_PARAMETER_ARRAYS]{};
   ModelParameters params{};
   float *params_memory{};
 
-  unsigned long activation_sizes[NUM_ACTIVATION_ARRAYS]{};
+  uint activation_sizes[NUM_ACTIVATION_ARRAYS]{};
   ModelActivation activations{};
   float *activations_memory{};
 
-  unsigned long gradient_sizes[NUM_GRADIENT_ARRAYS]{};
+  uint gradient_sizes[NUM_GRADIENT_ARRAYS]{};
   ParametersGradients gradients{};
   float *gradients_memory{};
 
-  unsigned long downstream_gradient_sizes[NUM_DOWNSTREAM_GRADIENT_ARRAYS]{};
+  uint downstream_gradient_sizes[NUM_DOWNSTREAM_GRADIENT_ARRAYS]{};
   downstreamGradients downstream_gradients{};
   float *downstream_gradients_memory{};
 
   bool isCuda = false;
 
-  void InitializeModelParametersSizes(unsigned long input_dim, unsigned long H1, unsigned long C)
+  void InitializeModelParametersSizes(uint input_dim, uint H1, uint C)
   {
     param_sizes[0] = H1 * input_dim; // ln1w
     param_sizes[1] = H1;             // ln1b
@@ -81,17 +81,9 @@ private:
     param_sizes[3] = C;              // ln2b
   }
 
-  void initializeParameterGradientsSizes(unsigned long input_dim, unsigned long H1, unsigned long C)
+  uint InitializeModelParametersSizes(ModelMemoryHandler *h_model)
   {
-    gradient_sizes[0] = H1 * input_dim; // ln1w gradients
-    gradient_sizes[1] = H1;             // ln1b gradients
-    gradient_sizes[2] = C * H1;         // ln2w gradients
-    gradient_sizes[3] = C;              // ln2b gradients
-  }
-
-  unsigned long InitializeModelParametersSizes(ModelMemoryHandler *h_model)
-  {
-    unsigned long total_param_size = 0;
+    uint total_param_size = 0;
     for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
     {
       total_param_size += h_model->param_sizes[i];
@@ -100,8 +92,26 @@ private:
     return total_param_size;
   }
 
-  void InitializeModelActivationSizes(unsigned long B, unsigned long H1,
-                                      unsigned long C)
+  void InitializeParameterGradientsSizes(uint input_dim, uint H1, uint C)
+  {
+    gradient_sizes[0] = H1 * input_dim; // ln1w gradients
+    gradient_sizes[1] = H1;             // ln1b gradients
+    gradient_sizes[2] = C * H1;         // ln2w gradients
+    gradient_sizes[3] = C;              // ln2b gradients
+  }
+
+  uint InitializeParameterGradientsSizes(ModelMemoryHandler *h_model)
+  {
+    uint total_param_size = 0;
+    for (int i = 0; i < NUM_GRADIENT_ARRAYS; i++)
+    {
+      total_param_size += h_model->gradient_sizes[i];
+      gradient_sizes[i] = h_model->gradient_sizes[i];
+    }
+    return total_param_size;
+  }
+
+  void InitializeModelActivationSizes(uint B, uint H1, uint C)
   {
     activation_sizes[0] = B * H1; // ln1
     activation_sizes[1] = B * H1; // a1
@@ -111,9 +121,9 @@ private:
     activation_sizes[5] = 1;      // reduced_loss
   }
 
-  unsigned long InitializeModelActivationSizes(ModelMemoryHandler *h_model)
+  uint InitializeModelActivationSizes(ModelMemoryHandler *h_model)
   {
-    unsigned long total_activation_size = 0;
+    uint total_activation_size = 0;
     for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
     {
       total_activation_size += h_model->activation_sizes[i];
@@ -122,14 +132,34 @@ private:
     return total_activation_size;
   }
 
-  // make sure params_sizes are initialzed
-  bool InitParametersMemory(INITIAL_VALUE_TYPE initial_value)
+  void InitializeDownstreamGradientSizes(uint input_dim, uint B, uint H1, uint C)
   {
-    unsigned long total_size = 0;
-    for (int i = 0; i < NUM_PARAMETER_ARRAYS; i++)
+    downstream_gradient_sizes[0] = B * input_dim; // dln1
+    downstream_gradient_sizes[1] = B * H1;        // da1
+    downstream_gradient_sizes[2] = B * H1;        // dln2
+    downstream_gradient_sizes[3] = B * C;         // dsm
+  }
+
+  uint InitializeDownstreamGradientSizes(ModelMemoryHandler *h_model)
+  {
+    uint total_downstream_gradient_size = 0;
+    for (int i = 0; i < NUM_DOWNSTREAM_GRADIENT_ARRAYS; i++)
     {
-      total_size += param_sizes[i];
+      total_downstream_gradient_size += h_model->downstream_gradient_sizes[i];
+      downstream_gradient_sizes[i] = h_model->downstream_gradient_sizes[i];
     }
+    return total_downstream_gradient_size;
+  }
+
+  float *InitMemory(INITIAL_VALUE_TYPE initial_value, uint *sizes, int num_arrays)
+  {
+    uint total_size = 0;
+
+    for (int i = 0; i < num_arrays; i++)
+    {
+      total_size += sizes[i];
+    }
+
     float *memory = nullptr;
 
     switch (initial_value)
@@ -144,45 +174,15 @@ private:
       memory = make_random_float(total_size);
       break;
     }
+
     if (memory == nullptr)
     {
-      // Handle allocation failure
-      // exit with a message and failure
       perror("Memory allocation failed\n");
-      exit(EXIT_FAILURE);
+      exit(EXIT_FAILURE); // Or return false if you prefer non-terminating error handling
     }
-    params_memory = memory;
-    return true;
-  }
 
-  bool InitActivationsMemory(INITIAL_VALUE_TYPE initial_value)
-  {
-    unsigned long total_size = 0;
-    for (int i = 0; i < NUM_ACTIVATION_ARRAYS; i++)
-    {
-      total_size += activation_sizes[i];
-    }
-    float *memory = nullptr; // = (float*)malloc(total_size * sizeof(float));
-
-    switch (initial_value)
-    {
-    case ZEROS_V:
-      memory = make_zeros_float(total_size);
-      break;
-    case ONES_V:
-      memory = make_ones_float(total_size);
-      break;
-    case RANDOM_V:
-      memory = make_random_float(total_size);
-      break;
-    }
-    if (memory == nullptr)
-    {
-      // Handle allocation failure
-      return false;
-    }
-    activations_memory = memory;
-    return true;
+    // Assign the memory to the appropriate global pointer
+    return memory; // Optionally return the allocated memory instead of true
   }
 
   void AssignParamsMemory()
@@ -209,42 +209,88 @@ private:
     }
   }
 
+  void AssignParamsGradientsMemory()
+  {
+    float **ptrs[] = {&gradients.ln1w_grad, &gradients.ln1b_grad,
+                      &gradients.ln2w_grad, &gradients.ln2b_grad};
+    float *memory_iterator = gradients_memory;
+    for (int i = 0; i < NUM_GRADIENT_ARRAYS; i++)
+    {
+      *(ptrs[i]) = memory_iterator;
+      memory_iterator += gradient_sizes[i];
+    }
+  }
+
+  void AssignDownstreamGradientsMemory()
+  {
+    float **ptrs[] = {&downstream_gradients.dln1, &downstream_gradients.da1,
+                      &downstream_gradients.dln2, &downstream_gradients.dsm};
+    float *memory_iterator = downstream_gradients_memory;
+    for (int i = 0; i < NUM_DOWNSTREAM_GRADIENT_ARRAYS; i++)
+    {
+      *(ptrs[i]) = memory_iterator;
+      memory_iterator += downstream_gradient_sizes[i];
+    }
+  }
+
 public:
   ModelMemoryHandler() {}
 
-  ModelMemoryHandler(unsigned long input_dim, unsigned long B, unsigned long H1,
-                     unsigned long C,
-                     INITIAL_VALUE_TYPE PARAMETERS_INIT = ZEROS_V,
-                     INITIAL_VALUE_TYPE ACTIVATION_INIT = ZEROS_V)
+  ModelMemoryHandler(uint input_dim, uint B, uint H1, uint C, INITIAL_VALUE_TYPE PARAMETERS_INIT = ZEROS_V, INITIAL_VALUE_TYPE ACTIVATION_INIT = ZEROS_V)
   {
-    isCuda = false; // default
+    // params memory
     InitializeModelParametersSizes(input_dim, H1, C);
-    InitializeModelActivationSizes(B, H1, C);
-    InitParametersMemory(PARAMETERS_INIT);
+    params_memory = InitMemory(PARAMETERS_INIT, param_sizes, NUM_PARAMETER_ARRAYS);
     AssignParamsMemory();
-    InitActivationsMemory(ACTIVATION_INIT);
+
+    // activation memory
+    InitializeModelActivationSizes(B, H1, C);
+    activations_memory = InitMemory(ACTIVATION_INIT, activation_sizes, NUM_ACTIVATION_ARRAYS);
     AssignActivationsMemory();
+
+    // Gradients
+    InitializeParameterGradientsSizes(input_dim, H1, C);
+    gradients_memory = InitMemory(PARAMETERS_INIT, gradient_sizes, NUM_GRADIENT_ARRAYS);
+    AssignParamsGradientsMemory();
+
+    // Downstream Gradients
+    InitializeDownstreamGradientSizes(input_dim, B, H1, C);
+    downstream_gradients_memory = InitMemory(PARAMETERS_INIT, downstream_gradient_sizes, NUM_DOWNSTREAM_GRADIENT_ARRAYS);
+    AssignDownstreamGradientsMemory();
   }
 
   ModelParameters GetParams() { return params; }
 
   ModelActivation GetActivations() { return activations; }
 
+  ParametersGradients GetGradients() { return gradients; }
+
+  downstreamGradients GetDownstreamGradients() { return downstream_gradients; }
+
   void model_to_cuda(ModelMemoryHandler *d_model)
   {
     d_model->isCuda = true;
-    unsigned long total_param_size = d_model->InitializeModelParametersSizes(this);
 
+    uint total_param_size = d_model->InitializeModelParametersSizes(this);
     cudaCheck(cudaMalloc(&d_model->params_memory, total_param_size * sizeof(float)));
     cudaCheck(cudaMemcpy(d_model->params_memory, this->params_memory, total_param_size * sizeof(float), cudaMemcpyHostToDevice));
     d_model->AssignParamsMemory();
 
     // copy activations
-    unsigned long total_activation_size = d_model->InitializeModelActivationSizes(this);
-
+    uint total_activation_size = d_model->InitializeModelActivationSizes(this);
     cudaCheck(cudaMalloc(&d_model->activations_memory, total_activation_size * sizeof(float)));
     cudaCheck(cudaMemcpy(d_model->activations_memory, this->activations_memory, total_activation_size * sizeof(float), cudaMemcpyHostToDevice));
     d_model->AssignActivationsMemory();
+
+    // memory for gradients
+    uint total_gradient_size = d_model->InitializeParameterGradientsSizes(this);
+    cudaCheck(cudaMalloc(&d_model->gradients_memory, total_gradient_size * sizeof(float)));
+    d_model->AssignParamsGradientsMemory();
+
+    // memory for downstream gradients
+    uint total_downstream_gradient_size = d_model->InitializeDownstreamGradientSizes(this);
+    cudaCheck(cudaMalloc(&d_model->downstream_gradients_memory, total_downstream_gradient_size * sizeof(float)));
+    d_model->AssignDownstreamGradientsMemory();
   }
 
   ~ModelMemoryHandler()
@@ -253,11 +299,15 @@ public:
     {
       cudaFree(params_memory);
       cudaFree(activations_memory);
+      cudaFree(gradients_memory);
+      cudaFree(downstream_gradients_memory);
     }
     else
     {
       free(params_memory);
       free(activations_memory);
+      free(gradients_memory);
+      free(downstream_gradients_memory);
     }
   }
 };

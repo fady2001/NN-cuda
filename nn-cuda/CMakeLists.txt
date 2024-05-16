@@ -30,11 +30,12 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 # Combine CUDA and C++ files into a single list
 set(SOURCES ${CPP_FILES}
         nn-cuda/ModelMemoryHandler.cuh
-        nn-cuda/matmuls_kernels.cuh)
+        nn-cuda/matmuls_kernels.cuh
+        nn-cuda/main.cu)
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/MatMul.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/main.cu" ${SOURCES})
 
 # Set include directories for the target
 target_include_directories(nn-cuda PRIVATE include vendor)
