@@ -78,30 +78,6 @@ __global__ void mat_mul_K2(const float *A, const float *B, float *C, uint N,
     C[row * M + col] = sum;
   }
 }
-void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
-                        bool is_first_T, bool is_second_T,
-                        int sqrt_block_size) {
-
-  size_t shared_mem_size =
-      2 * sqrt_block_size * sqrt_block_size * sizeof(float);
-
-  dim3 grid_dim((M + sqrt_block_size - 1) / sqrt_block_size,
-                (N + sqrt_block_size - 1) / sqrt_block_size);
-  dim3 block_dim(sqrt_block_size, sqrt_block_size);
-
-  if (!is_first_T && !is_second_T) {
-    mat_mul_K2_none<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N, L, M);
-  } else if (is_first_T && !is_second_T) {
-    mat_mul_K2_first_T<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N, L,
-                                                                 M);
-  } else if (!is_first_T && is_second_T) {
-    mat_mul_K2_second_T<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N, L,
-                                                                  M);
-  } else if (is_first_T && is_second_T) {
-    mat_mul_K2_both_T<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N, L,
-                                                                M);
-  }
-}
 
 void mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
                  uint M) {
@@ -152,7 +128,7 @@ int main() {
   uint B_d2 = 128;
 
   bool is_f_T = false;
-  bool is_s_T = true;
+  bool is_s_T = false;
 
   // create host memory of random numbers
   float *A = make_random_float(A_d1 * A_d2);
@@ -234,6 +210,12 @@ int main() {
   free(A);
   free(B);
   free(C);
+  if (is_f_T) {
+    free(A_T);
+  }
+  if (is_s_T) {
+    free(B_T);
+  }
   //  free(A_T);
   //  free(B_T);
 
