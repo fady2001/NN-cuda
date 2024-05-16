@@ -93,9 +93,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.hpp" />
+    <ClInclude Include="kernels.cuh" />
+    <ClInclude Include="kernels_launchers.cuh" />
+    <ClInclude Include="matmuls_kernels.cuh" />
     <ClInclude Include="ModelLayers.hpp" />
-    <ClInclude Include="ModelLayersKernels.cuh" />
-    <ClInclude Include="ModelLayersKernelsLaunchers.cuh" />
     <ClInclude Include="ModelMemoryHandler.cuh" />
   </ItemGroup>
   <ItemGroup>
