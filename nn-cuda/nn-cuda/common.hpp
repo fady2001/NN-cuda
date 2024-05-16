@@ -83,6 +83,33 @@ void write_npy(const char *filename, const T *data, unsigned int n_dims,
   npy::SaveArrayAsNumpy<T>(full_path, false, n_dims, shape, data);
 }
 
+void get_from_gpu_and_print(const char* name, float* d_ptr, int size) {
+	float* ptr = (float*)malloc(size * sizeof(float));
+	cudaCheck(cudaMemcpy(ptr, d_ptr, size * sizeof(float), cudaMemcpyDeviceToHost));
+	printf("%s\n", name);
+	for (int i = 0; i < 10; i++) {
+		printf("%f\n", ptr[i]);
+	}
+	printf("-----------------------\n");
+	free(ptr);
+}
+
+void save_1d(const char* name, float* d_ptr, unsigned long size) {
+	std::string path = std::string("all-model\\") + std::string(name) + std::string(".npy");
+	float* ptr = (float*)malloc(size * sizeof(float));
+	cudaCheck(cudaMemcpy(ptr, d_ptr, size * sizeof(float), cudaMemcpyDeviceToHost));
+	write_npy(path.c_str(), ptr, 1, new unsigned long[1]{ size });
+	free(ptr);
+}
+
+void save_2d(const char* name, float* d_ptr, unsigned long size1, unsigned long size2) {
+	std::string path = std::string("all-model\\") + std::string(name) + std::string(".npy");
+	float* ptr = (float*)malloc(size1 * size2 * sizeof(float));
+	cudaCheck(cudaMemcpy(ptr, d_ptr, size1 * size2 * sizeof(float), cudaMemcpyDeviceToHost));
+	write_npy(path.c_str(), ptr, 2, new unsigned long[2]{ size1, size2 });
+	free(ptr);
+}
+
 void print_2D_Matrix(float *matrix, const char *name, int rows, int cols)
 {
   printf("Matrix: %s with size %d x %d: \n", name, rows, cols);
