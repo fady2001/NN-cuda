@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./NN-cuda/nn-cuda/nn-cuda")
+# Set the runtime output directory
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# this has to be set before project()
+# Set CUDA architectures if not defined
 if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 86)
 endif ()
@@ -28,12 +29,18 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 #
 # Combine CUDA and C++ files into a single list
 set(SOURCES ${CPP_FILES}
-        nn-cuda/ModelMemoryHandler.cuh)
+        nn-cuda/ModelMemoryHandler.cuh
+        nn-cuda/matmuls_kernels.cuh)
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/main.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/MatMul.cu" ${SOURCES})
 
-# If you have CUDA libraries to link
+# Set include directories for the target
+target_include_directories(nn-cuda PRIVATE include vendor)
+
+# Set CUDA compilation flags (uncomment if needed)
+# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall")
+
+# Link CUDA libraries if needed (uncomment if needed)
 # target_link_libraries(nn-cuda ${CUDA_LIBRARIES})
-# add_executable(relu nn-cuda/relu.cu)

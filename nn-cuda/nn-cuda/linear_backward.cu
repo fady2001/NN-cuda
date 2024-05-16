@@ -18,15 +18,18 @@
  *  @param is_second_T: if true, B is transposed
  *
  */
-__global__ void mat_mul(const float *A, const float *B, float *C, uint N,
-                        uint L, uint M, bool is_first_T, bool is_second_T) {
+__global__ void mat_mul_naïve(const float *A, const float *B, float *C, uint N,
+                              uint L, uint M, bool is_first_T, bool is_second_T)
+{
   // this maps one thread to one output element
   // the grid size is (B,M,1)
   uint i = blockIdx.x * blockDim.x + threadIdx.x;
   uint j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < N && j < M) {
+  if (i < N && j < M)
+  {
     float sum = 0;
-    for (uint k = 0; k < L; k++) {
+    for (uint k = 0; k < L; k++)
+    {
       float a = is_first_T ? A[k * N + i] : A[i * L + k];
       float b = is_second_T ? B[j * L + k] : B[k * M + j];
       sum += a * b;
@@ -42,32 +45,38 @@ __global__ void mat_mul(const float *A, const float *B, float *C, uint N,
  *  The output is M
  */
 __global__ void reduce_on_axis(const float *A, float *out, uint N, uint M,
-                               bool take_avg = false) {
+                               bool take_avg = false)
+{
   // this maps one thread per column
   // the grid size is (B,1,1)
   uint j = threadIdx.x + blockIdx.x * blockDim.x;
-  if (j < M) {
+  if (j < M)
+  {
     float sum = 0;
-    for (uint k = 0; k < N; k++) {
+    for (uint k = 0; k < N; k++)
+    {
       sum += A[k * M + j];
     }
     out[j] = sum;
-    if (take_avg) {
+    if (take_avg)
+    {
       out[j] /= (float)N;
     }
   }
 }
 
 void runMatMull(float *A, float *B, float *C, uint N, uint L, uint M,
-                bool is_first_T, bool is_second_T, int sqrt_block_size) {
+                bool is_first_T, bool is_second_T, int sqrt_block_size)
+{
   dim3 block(sqrt_block_size, sqrt_block_size);
   dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-  mat_mul<<<grid, block>>>(A, B, C, N, L, M, is_first_T, is_second_T);
+  mat_mul_naïve<<<grid, block>>>(A, B, C, N, L, M, is_first_T, is_second_T);
   cudaCheck(cudaDeviceSynchronize());
 }
 
 void runReduceOnAxisKernel(float *d_A, float *d_out, uint N, uint M,
-                           int block_size, bool take_avg = false) {
+                           int block_size, bool take_avg = false)
+{
   // we will use 256 threads per block
   uint grid_size = (M + block_size - 1) / block_size;
   reduce_on_axis<<<grid_size, block_size>>>(d_A, d_out, N, M, take_avg);
@@ -77,7 +86,8 @@ void runReduceOnAxisKernel(float *d_A, float *d_out, uint N, uint M,
 
 void runBackward(float *d_inp, float *d_weight, float *d_up_grad, float *d_dLdw,
                  float *d_dLdb, float *d_dLdx, uint B, uint N, uint M,
-                 int sqrt_block_size) {
+                 int sqrt_block_size)
+{
   // compute dL/dW = (dL/dout).T * x
   runMatMull(d_up_grad, d_inp, d_dLdw, M, B, N, true, false, sqrt_block_size);
   // compute dL/db = avg(dL/dout, axis=0)
@@ -87,7 +97,8 @@ void runBackward(float *d_inp, float *d_weight, float *d_up_grad, float *d_dLdw,
              sqrt_block_size);
 }
 
-void read_cuda(float *d_out, uint N, uint M, const char *name) {
+void read_cuda(float *d_out, uint N, uint M, const char *name)
+{
   float *out = (float *)malloc(N * M * sizeof(float));
   cudaCheck(
       cudaMemcpy(out, d_out, N * M * sizeof(float), cudaMemcpyDeviceToHost));
@@ -95,7 +106,8 @@ void read_cuda(float *d_out, uint N, uint M, const char *name) {
   free(out);
 }
 
-int main() {
+int main()
+{
   srand(0);
   const size_t B = 300, N = 1000, M = 350;
 
