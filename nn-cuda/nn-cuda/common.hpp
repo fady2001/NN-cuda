@@ -22,10 +22,10 @@ void cuda_check(cudaError_t error, const char *file, int line) {
 }
 #define cudaCheck(err) (cuda_check(err, __FILE__, __LINE__))
 
-template <class T> T *make_random_float_01(size_t N) {
-  T *arr = (T *)malloc(N * sizeof(T));
+float *make_random_float_01(size_t N) {
+  float *arr = (float *)malloc(N * sizeof(float));
   for (size_t i = 0; i < N; i++) {
-    arr[i] = ((T)rand() / RAND_MAX); // range 0..1
+    arr[i] = ((float)rand() / RAND_MAX); // range 0..1
   }
   return arr;
 }
@@ -61,7 +61,7 @@ float *make_ones_float(size_t N) {
   return arr;
 }
 
-template <class T>
+template<class T>
 void write_npy(const char *filename, const T *data, unsigned int n_dims,
                const unsigned long *shape) {
   std::string full_path = "..\\with-torch-tests\\" + std::string(filename);

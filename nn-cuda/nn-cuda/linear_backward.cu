@@ -111,57 +111,57 @@ int main()
   srand(0);
   const size_t B = 300, N = 1000, M = 350;
 
-  int deviceIdx = 0;
-  cudaCheck(cudaSetDevice(deviceIdx));
+//   int deviceIdx = 0;
+//   cudaCheck(cudaSetDevice(deviceIdx));
 
-  float *inp = make_random_float(B * N);
-  float *weight = make_random_float(M * N);
-  float *bias = make_random_float(M);
-  float *up_grad = make_random_float(B * M); // dL/dout
+//   float *inp = make_random_float(B * N);
+//   float *weight = make_random_float(M * N);
+//   float *bias = make_random_float(M);
+//   float *up_grad = make_random_float(B * M); // dL/dout
 
-// write arrays to npy files if you want to test with torch
-#if TEST_PYTORTH
-  write_npy("linear-backward\\X_c.npy", inp, 2, new unsigned long[2]{B, N});
-  write_npy("linear-backward\\W_C.npy", weight, 2, new unsigned long[2]{M, N});
-  write_npy("linear-backward\\bias_C.npy", bias, 1, new unsigned long[1]{M});
-  write_npy("linear-backward\\up_grad.npy", up_grad, 2,
-            new unsigned long[2]{B, M});
-#endif
+// // write arrays to npy files if you want to test with torch
+// #if TEST_PYTORTH
+//   write_npy("linear-backward\\X_c.npy", inp, 2, new unsigned long[2]{B, N});
+//   write_npy("linear-backward\\W_C.npy", weight, 2, new unsigned long[2]{M, N});
+//   write_npy("linear-backward\\bias_C.npy", bias, 1, new unsigned long[1]{M});
+//   write_npy("linear-backward\\up_grad.npy", up_grad, 2,
+//             new unsigned long[2]{B, M});
+// #endif
 
-  // move to GPU
-  float *d_inp;
-  float *d_weight;
-  //  float *d_bias;
-  float *d_up_grad;
-  // three gradients we need to compute
+//   // move to GPU
+//   float *d_inp;
+//   float *d_weight;
+//   //  float *d_bias;
+//   float *d_up_grad;
+//   // three gradients we need to compute
 
-  float *d_dLdw;
-  float *d_dLdb;
-  float *d_dLdx;
+//   float *d_dLdw;
+//   float *d_dLdb;
+//   float *d_dLdx;
 
-  cudaCheck(cudaMalloc(&d_inp, B * N * sizeof(float)));
-  cudaCheck(cudaMalloc(&d_weight, M * N * sizeof(float)));
-  //  cudaCheck(cudaMalloc(&d_bias, M * sizeof(float)));
-  cudaCheck(cudaMalloc(&d_up_grad, B * M * sizeof(float)));
-  cudaCheck(
-      cudaMemcpy(d_inp, inp, B * N * sizeof(float), cudaMemcpyHostToDevice));
-  cudaCheck(cudaMemcpy(d_weight, weight, M * N * sizeof(float),
-                       cudaMemcpyHostToDevice));
-  //  cudaCheck(
-  //      cudaMemcpy(d_bias, bias, M * sizeof(float), cudaMemcpyHostToDevice));
-  cudaCheck(cudaMemcpy(d_up_grad, up_grad, B * M * sizeof(float),
-                       cudaMemcpyHostToDevice));
+//   cudaCheck(cudaMalloc(&d_inp, B * N * sizeof(float)));
+//   cudaCheck(cudaMalloc(&d_weight, M * N * sizeof(float)));
+//   //  cudaCheck(cudaMalloc(&d_bias, M * sizeof(float)));
+//   cudaCheck(cudaMalloc(&d_up_grad, B * M * sizeof(float)));
+//   cudaCheck(
+//       cudaMemcpy(d_inp, inp, B * N * sizeof(float), cudaMemcpyHostToDevice));
+//   cudaCheck(cudaMemcpy(d_weight, weight, M * N * sizeof(float),
+//                        cudaMemcpyHostToDevice));
+//   //  cudaCheck(
+//   //      cudaMemcpy(d_bias, bias, M * sizeof(float), cudaMemcpyHostToDevice));
+//   cudaCheck(cudaMemcpy(d_up_grad, up_grad, B * M * sizeof(float),
+//                        cudaMemcpyHostToDevice));
 
-  cudaCheck(cudaMalloc(&d_dLdw, M * N * sizeof(float)));
-  cudaCheck(cudaMalloc(&d_dLdb, M * sizeof(float)));
-  cudaCheck(cudaMalloc(&d_dLdx, B * N * sizeof(float)));
+//   cudaCheck(cudaMalloc(&d_dLdw, M * N * sizeof(float)));
+//   cudaCheck(cudaMalloc(&d_dLdb, M * sizeof(float)));
+//   cudaCheck(cudaMalloc(&d_dLdx, B * N * sizeof(float)));
 
-  runBackward(d_inp, d_weight, d_up_grad, d_dLdw, d_dLdb, d_dLdx, B, N, M, 16);
-#if TEST_PYTORTH
-  read_cuda(d_dLdw, M, N, "linear-backward\\dLdw.npy");
-  read_cuda(d_dLdb, M, 1, "linear-backward\\dLdb.npy");
-  read_cuda(d_dLdx, B, N, "linear-backward\\dLdx.npy");
-#endif
+//   runBackward(d_inp, d_weight, d_up_grad, d_dLdw, d_dLdb, d_dLdx, B, N, M, 16);
+// #if TEST_PYTORTH
+//   read_cuda(d_dLdw, M, N, "linear-backward\\dLdw.npy");
+//   read_cuda(d_dLdb, M, 1, "linear-backward\\dLdb.npy");
+//   read_cuda(d_dLdx, B, N, "linear-backward\\dLdx.npy");
+// #endif
 
-  return 0;
-}
+//   return 0;
+// }
