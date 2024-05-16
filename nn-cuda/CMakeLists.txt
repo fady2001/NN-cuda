@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set CUDA architectures if not defined
-if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 86)
-endif ()
+endif()
 
 project(nn-cuda LANGUAGES CXX CUDA)
 
@@ -29,11 +29,11 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 #
 # Combine CUDA and C++ files into a single list
 set(SOURCES ${CPP_FILES}
-        nn-cuda/kernels_launchers.cuh)
+    nn-cuda/kernels_launchers.cuh)
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/main.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/main_training.cu" ${SOURCES})
 
 # Set include directories for the target
 target_include_directories(nn-cuda PRIVATE include vendor)
