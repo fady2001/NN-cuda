@@ -96,4 +96,13 @@ public:
     mat_mul_dispatcher(d_up_grad, d_weight, d_dLdx, B, M, N, false, false,
                        sqrt_block_size);
   }
+
+  static void SGD_run_kernel(float *params_memory, const float *grads_memory,
+                             uint num_parameters, float learning_rate = 1e-3,
+                             float weight_decay = 0.0, int block_size = 16) {
+    int num_blocks = ceil_div<float>(num_parameters, block_size);
+    SGD_kernel<<<num_blocks, block_size>>>(params_memory, grads_memory,
+                                           num_parameters, learning_rate,
+                                           weight_decay);
+  }
 };

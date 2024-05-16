@@ -236,3 +236,10 @@ __global__ void reduce_on_axis(const float *A, float *out, uint N, uint M,
     }
   }
 }
+
+__global__ void SGD_kernel(float* params_memory, const float* grads_memory, long num_parameters, float learning_rate, float weight_decay) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < num_parameters) {
+      params_memory[i] -= learning_rate * (grads_memory[i] + weight_decay * params_memory[i]);
+  }
+}

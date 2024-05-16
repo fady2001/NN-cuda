@@ -258,6 +258,15 @@ public:
     downstream_gradients_memory = InitMemory(PARAMETERS_INIT, downstream_gradient_sizes, NUM_DOWNSTREAM_GRADIENT_ARRAYS);
     AssignDownstreamGradientsMemory();
   }
+  float *GetParamsMemory() { return params_memory; }
+  float *GetActivationsMemory() { return activations_memory; }
+  float *GetGradientsMemory() { return gradients_memory; }
+  float *GetDownstreamGradientsMemory() { return downstream_gradients_memory; }
+
+  uint get_num_parameters()
+  {
+    return param_sizes[0] + param_sizes[1] + param_sizes[2] + param_sizes[3];
+  }
 
   ModelParameters GetParams() { return params; }
 
