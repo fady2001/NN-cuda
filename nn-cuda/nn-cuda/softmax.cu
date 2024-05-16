@@ -1,4 +1,4 @@
-//#include "common.cuh"
+//#include "common.hpp"
 //#include <stdio.h>
 //#define TEST_PYTORTH true
 //
@@ -89,7 +89,7 @@
 //int main()
 //{
 //	srand(0);
-//	const unsigned long N = 100, C = 100;
+//	const unsigned long N = 3, C = 3;
 //
 //	int deviceIdx = 0;
 //	cudaCheck(cudaSetDevice(deviceIdx));
@@ -108,7 +108,7 @@
 //	}
 //
 //#if TEST_PYTORTH
-//    write_npy("softmax-layer\\h_inp.npy", h_inp, 2, new size_t[2]{N, C});
+//   write_npy("softmax-layer\\h_inp.npy", h_inp, 2, new unsigned long[2]{N, C});
 //#endif
 //
 //
@@ -120,9 +120,9 @@
 //	cudaCheck(cudaMemcpy(d_inp, h_inp, N * C * sizeof(float), cudaMemcpyHostToDevice));
 //
 //	softmax_cpu<float>(h_inp, h_out, N, C);
-//    
+//   
 //#if TEST_PYTORTH
-//   write_npy("softmax-layer\\h_out.npy", h_out, 2, new size_t[2]{N, C});
+//  write_npy("softmax-layer\\h_out.npy", h_out, 2, new unsigned long[2]{N, C});
 //#endif
 //
 //	int block_sizes[] = { 32, 64, 128, 256, 512, 1024 };
