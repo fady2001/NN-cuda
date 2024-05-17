@@ -33,7 +33,7 @@ set(SOURCES ${CPP_FILES}
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/main_training.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/linear_backward.cu" ${SOURCES})
 
 # Set include directories for the target
 target_include_directories(nn-cuda PRIVATE include vendor)
