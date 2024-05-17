@@ -28,12 +28,12 @@ file(GLOB CPP_FILES nn-cuda/*.cpp)
 
 #
 # Combine CUDA and C++ files into a single list
-set(SOURCES ${CPP_FILES}
-        nn-cuda/kernels_launchers.cuh)
+set(SOURCES ${CPP_FILES})
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/linear_backward.cu" ${SOURCES})
+add_executable(nn-cuda "nn-cuda/main_training.cu" ${SOURCES}
+        nn-cuda/main_training.cu)
 
 # Set include directories for the target
 target_include_directories(nn-cuda PRIVATE include vendor)
@@ -43,4 +43,4 @@ target_include_directories(nn-cuda PRIVATE include vendor)
 
 # Link CUDA libraries if needed (uncomment if needed)
 # target_link_libraries(nn-cuda ${CUDA_LIBRARIES})
-add_executable(training nn-cuda/main_training.cu)
+#add_executable(training nn-cuda/main_training.cu)

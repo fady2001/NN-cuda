@@ -56,7 +56,7 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
   //      d_model.GetActivations().reduced_loss, B, 32);
   KernelsLaunchers::run_reduce_kernel3(d_model.GetActivations().loss,
                                        d_model.GetActivations().reduced_loss, B,
-                                       REDUCTION::SUM, 32);
+                                       REDUCTION::MEAN, 32);
   // cuda synchronize();
   cudaCheck(cudaDeviceSynchronize());
   // copy the loss to the host

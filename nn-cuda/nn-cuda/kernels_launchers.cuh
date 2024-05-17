@@ -9,7 +9,7 @@ public:
     dim3 block(sqrt_block_size, sqrt_block_size);
     dim3 grid((B + block.x - 1) / block.x, (M + block.y - 1) / block.y);
     linear_layer_forward_naive<<<grid, block>>>(X, W, bias, y, B, N, M);
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
 
   static void run_relu_kernel(float *input, float *output, uint B, uint N,
@@ -17,7 +17,7 @@ public:
     dim3 block(sqrt_block_size, sqrt_block_size);
     dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
     relu_forward<<<grid, block>>>(input, output, B, N);
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
 
   static void runReluBackward(float *input, float *upGrad, float *downGrad,
@@ -25,13 +25,13 @@ public:
     dim3 block(sqrt_block_size, sqrt_block_size);
     dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
     relu_backward<<<grid, block>>>(input, upGrad, downGrad, B, N);
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
   static void run_softmax_kernel(const float *input, float *output, uint N,
                                  uint C, uint block_size) {
     int num_blocks = (N + block_size - 1) / block_size;
     softmax_kernel<<<num_blocks, block_size>>>(input, output, N, C);
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
 
   static void run_cross_entropy_kernel(float *losses, const float *probs,
@@ -41,7 +41,7 @@ public:
     const int grid_size = (N + block_size - 1) / block_size;
     cross_entropy_kernel<<<grid_size, block_size>>>(losses, probs, targets, N,
                                                     C);
-    cudaCheck(cudaGetLastError());
+    //    cudaCheck(cudaGetLastError());
   }
 
   static void run_reduce_kernel3(float *d_a, float *d_result, uint size,
@@ -50,7 +50,7 @@ public:
     int num_blocks = (size + block_size - 1) / block_size;
     reduce_kernel3<<<1, num_blocks, block_size * sizeof(float)>>>(
         d_a, d_result, size, reduction);
-    cudaCheck(cudaGetLastError());
+    //    cudaCheck(cudaGetLastError());
   }
 
   static void run_crossentropy_softmax_backward(float *down_grads, float *probs,
@@ -59,7 +59,7 @@ public:
     const int grid_size = (N + block_size - 1) / block_size;
     crossentropy_softmax_backward_kernel<<<grid_size, block_size>>>(
         down_grads, probs, targets, N, C);
-    cudaCheck(cudaGetLastError());
+    //    cudaCheck(cudaGetLastError());
   }
 
   static void runMatMull(float *A, float *B, float *C, uint N, uint L, uint M,
@@ -68,7 +68,7 @@ public:
     dim3 block(sqrt_block_size, sqrt_block_size);
     dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
     mat_mul_naive<<<grid, block>>>(A, B, C, N, L, M, is_first_T, is_second_T);
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
 
   static void runReduceOnAxisKernel(float *d_A, float *d_out, uint N, uint M,
@@ -76,8 +76,8 @@ public:
     // we will use 256 threads per block
     uint grid_size = (M + block_size - 1) / block_size;
     reduce_on_axis<<<grid_size, block_size>>>(d_A, d_out, N, M, take_avg);
-    cudaCheck(cudaPeekAtLastError());
-    cudaCheck(cudaDeviceSynchronize());
+    //    cudaCheck(cudaPeekAtLastError());
+    //    cudaCheck(cudaDeviceSynchronize());
   }
 
   static void runLinearBackward(float *d_inp, float *d_weight, float *d_up_grad,
