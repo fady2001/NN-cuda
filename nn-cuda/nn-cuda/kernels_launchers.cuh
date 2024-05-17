@@ -12,8 +12,8 @@ public:
     cudaCheck(cudaDeviceSynchronize());
   }
 
-  static void run_relu_kernel(float *input, float *output, int B, int N,
-                              int sqrt_block_size) {
+  static void run_relu_kernel(float *input, float *output, uint B, uint N,
+                              uint sqrt_block_size) {
     dim3 block(sqrt_block_size, sqrt_block_size);
     dim3 grid((N + block.x - 1) / block.x, (B + block.y - 1) / block.y);
     relu_forward<<<grid, block>>>(input, output, B, N);
@@ -44,7 +44,8 @@ public:
     cudaCheck(cudaGetLastError());
   }
 
-  static void run_reduce_kernel3(float *d_a, float *d_result, uint size, REDUCTION reduction, uint block_size) {
+  static void run_reduce_kernel3(float *d_a, float *d_result, uint size,
+                                 REDUCTION reduction, uint block_size) {
     // (dividend + divisor - 1) / divisor
     int num_blocks = (size + block_size - 1) / block_size;
     reduce_kernel3<<<1, num_blocks, block_size * sizeof(float)>>>(
