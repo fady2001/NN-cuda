@@ -2,7 +2,7 @@
 #include "kernels.cuh"
 #include "matmuls_kernels.cuh"
 
-class ModelLayersKernelsLaunchers {
+class KernelsLaunchers {
 public:
   static void linear_layer(float *X, float *W, float *bias, float *y, uint B,
                            uint N, uint M, uint sqrt_block_size) {
@@ -44,12 +44,11 @@ public:
     cudaCheck(cudaGetLastError());
   }
 
-  static void run_array_sum_kernel3(float *d_a, float *d_result, uint size,
-                                    uint block_size) {
+  static void run_reduce_kernel3(float *d_a, float *d_result, uint size, REDUCTION reduction, uint block_size) {
     // (dividend + divisor - 1) / divisor
     int num_blocks = (size + block_size - 1) / block_size;
     reduce_kernel3<<<1, num_blocks, block_size * sizeof(float)>>>(
-        d_a, d_result, size);
+        d_a, d_result, size, reduction);
     cudaCheck(cudaGetLastError());
   }
 

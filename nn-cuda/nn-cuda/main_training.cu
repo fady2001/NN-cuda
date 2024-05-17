@@ -33,14 +33,14 @@ void train_step(ModelMemoryHandler &d_model, float *inp, int *target, int B, int
     cudaCheck(cudaMemcpy(d_target, target, B * sizeof(int), cudaMemcpyHostToDevice));
 
     // run the model
-    ModelLayersKernelsLaunchers::linear_layer(
+    KernelsLaunchers::linear_layer(
         d_inp, d_model.GetParams().ln1w, d_model.GetParams().ln1b, d_model.GetActivations().ln1, B, input_dim, H1, 32);
-    ModelLayersKernelsLaunchers::run_relu_kernel(d_model.GetActivations().ln1, d_model.GetActivations().a1, B, H1, 32);
-    ModelLayersKernelsLaunchers::linear_layer(
+    KernelsLaunchers::run_relu_kernel(d_model.GetActivations().ln1, d_model.GetActivations().a1, B, H1, 32);
+    KernelsLaunchers::linear_layer(
         d_model.GetActivations().a1, d_model.GetParams().ln2w, d_model.GetParams().ln2b, d_model.GetActivations().ln2, B, H1, C, 32);
-    ModelLayersKernelsLaunchers::run_softmax_kernel(d_model.GetActivations().ln2, d_model.GetActivations().sm, B, C, 32);
-    ModelLayersKernelsLaunchers::run_cross_entropy_kernel(d_model.GetActivations().loss, d_model.GetActivations().sm, d_target, B, C, 32);
-    ModelLayersKernelsLaunchers::run_array_sum_kernel3(d_model.GetActivations().loss, d_model.GetActivations().reduced_loss, B, 32);
+    KernelsLaunchers::run_softmax_kernel(d_model.GetActivations().ln2, d_model.GetActivations().sm, B, C, 32);
+    KernelsLaunchers::run_cross_entropy_kernel(d_model.GetActivations().loss, d_model.GetActivations().sm, d_target, B, C, 32);
+    KernelsLaunchers::reduce_kernel3(d_model.GetActivations().loss, d_model.GetActivations().reduced_loss, B, 32);
 
     // cuda synchronize();
     cudaCheck(cudaDeviceSynchronize());
@@ -50,19 +50,19 @@ void train_step(ModelMemoryHandler &d_model, float *inp, int *target, int B, int
     printf("Loss: %f\n", *reduced_loss);
 
     // backpropagation
-    ModelLayersKernelsLaunchers::run_crossentropy_softmax_backward(
+    KernelsLaunchers::run_crossentropy_softmax_backward(
         d_model.GetDownstreamGradients().dsm, d_model.GetActivations().sm, d_target, B, C, 32);
-    ModelLayersKernelsLaunchers::runLinearBackward(
+    KernelsLaunchers::runLinearBackward(
         d_model.GetActivations().a1, d_model.GetParams().ln2w, d_model.GetDownstreamGradients().dsm, d_model.GetGradients().ln2w_grad,
         d_model.GetGradients().ln2b_grad, d_model.GetDownstreamGradients().dln2, B, H1, C, 32);
-    ModelLayersKernelsLaunchers::runReluBackward(
+    KernelsLaunchers::runReluBackward(
         d_model.GetActivations().ln1, d_model.GetDownstreamGradients().dln2, d_model.GetDownstreamGradients().da1, B, H1, 32);
-    ModelLayersKernelsLaunchers::runLinearBackward(
+    KernelsLaunchers::runLinearBackward(
         d_inp, d_model.GetParams().ln1w, d_model.GetDownstreamGradients().da1, d_model.GetGradients().ln1w_grad, d_model.GetGradients().ln1b_grad,
         d_model.GetDownstreamGradients().dln1, B, input_dim, H1, 32);
 
     // Update the parameters
-    ModelLayersKernelsLaunchers::SGD_run_kernel(d_model.GetParamsMemory(), d_model.GetGradientsMemory(), d_model.get_num_parameters(), 0.01, 0.0, 32);
+    KernelsLaunchers::SGD_run_kernel(d_model.GetParamsMemory(), d_model.GetGradientsMemory(), d_model.get_num_parameters(), 0.01, 0.0, 32);
 
     // Free allocated memory on device
     cudaCheck(cudaFree(d_inp));

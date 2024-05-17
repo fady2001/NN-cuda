@@ -2,6 +2,9 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #define uint unsigned int
+
+enum REDUCTION { MEAN, SUM, MAX };
+
 /**
  * @brief
  *  this performs the forward pass of a linear layer
@@ -94,40 +97,42 @@ __global__ void cross_entropy_kernel(T *losses, const T *input,
 }
 
 template <class T>
-__global__ void reduce_kernel3(T *d_a, T *d_result, uint size) {
-  extern __shared__ T v[];
-  uint amount_per_thread = (size + blockDim.x - 1) / blockDim.x;
-  uint start_index = threadIdx.x * amount_per_thread;
-  uint end_index = min(start_index + amount_per_thread, size);
-  T partialsum = 0.0f;
-  for (uint k = start_index; k < end_index; k++) {
-    partialsum += d_a[k];
-    v[threadIdx.x] = partialsum;
-  }
-  __syncthreads();
+__global__ void reduce_kernel3(T *d_a, T *d_result, int size, REDUCTION reduction) {
+   extern __shared__ T v[];
+   int amount_per_thread = (size + blockDim.x - 1) / blockDim.x;
+   int start_index = threadIdx.x * amount_per_thread; 
+   int end_index = min(start_index + amount_per_thread, size); 
+   T partialsum = (reduction == MAX) ? d_a[start_index] : 0.0f;
 
-  /*
-  The loop starts with `s` equal to half the block size (`blockDim.x`).
-  In each iteration of the loop, each thread with an index less than `s` adds
-  the element at position `threadIdx.x + s` to the element at position
-  `threadIdx.x` in the array `v`. The operation `s>>=1` halves `s` in each
-  iteration, effectively reducing the active size of the array by half in each
-  step. After each step, `__syncthreads()` is called to ensure that all threads
-  have completed their computations before the next iteration begins. This is
-  necessary because in the next iteration, some threads will be working with
-  results computed by other threads in the current iteration. This process
-  continues until `s` becomes 0, at which point all elements of the array have
-  been added together and the total is stored in `v[0]`.
-  */
-  for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
-    if (threadIdx.x < s) {
-      v[threadIdx.x] += v[threadIdx.x + s];
-    }
-    __syncthreads();
-  }
-  if (threadIdx.x == 0) {
-    d_result[0] = v[0];
-  }
+   for(int k = start_index; k < end_index; k++) {
+       if (reduction == MAX) {
+           partialsum = max(partialsum, d_a[k]);
+       } else {
+           partialsum += d_a[k];
+       }
+   }
+   v[threadIdx.x] = partialsum; 
+
+   __syncthreads();
+
+   for(unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+       if (threadIdx.x < s) {
+           if (reduction == MAX) {
+               v[threadIdx.x] = max(v[threadIdx.x], v[threadIdx.x + s]);
+           } else {
+               v[threadIdx.x] += v[threadIdx.x + s];
+           }
+       }
+       __syncthreads();
+   }
+
+   if (threadIdx.x == 0) {
+       if (reduction == MEAN) {
+           d_result[0] = v[0] / size;
+       } else {
+           d_result[0] = v[0];
+       }
+   }
 }
 
 /*###################################################################################
