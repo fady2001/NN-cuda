@@ -4,6 +4,7 @@ enum REDUCTION
 {
     SUM,
     MEAN,
+    MAX
 };
 
 class ModelLayers
@@ -85,30 +86,134 @@ public:
     }
 
     template <class T>
-    static void reduce_cpu(T *out, const T *in, int N, REDUCTION reduction = SUM)
+    static void reduce_cpu(T *out, T *in, int N, REDUCTION reduction = MEAN)
     {
-        switch (reduction)
+        if (reduction == MAX)
         {
-        case SUM:
-        {
-            T sum = 0;
-            for (int i = 0; i < N; ++i)
+            *out = in[0];
+            for (int i = 1; i < N; ++i)
             {
-                sum += in[i];
+                if (in[i] > *out)
+                {
+                    *out = in[i];
+                }
             }
-            *out = sum;
-            break;
+            return;
         }
-        case MEAN:
+        T sum = 0;
+        for (int i = 0; i < N; ++i)
         {
-            T sum = 0;
-            for (int i = 0; i < N; ++i)
+            sum += in[i];
+        }
+        *out = sum;
+        if (reduction == MEAN)
+        {
+            *out /= N;
+        }
+    }
+
+    /*###################################################################################
+    #								BACK PROPAGATION
+    #
+    #####################################################################################*/
+
+    /**
+     * @brief
+     *
+     * @tparam T
+     * @param down_grads: output tensor of shape (N, C)
+     * @param probs: input tensor of shape (N, C) where N is the batch size (number of rows) and C (number of columns) is the number of classes
+     * @param targets : target tensor of shape (N) contains number from 0 to C-1
+     * @param N : number of rows
+     * @param C : number of columns
+     * @return __global__
+     */
+    template <class T>
+    static void crossentropy_softmax_backward_cpu(T *down_grads, const T *probs, const int *targets, int N, int C)
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = 0; j < C; j++)
             {
-                sum += in[i];
+                down_grads[j + i * C] = probs[j + i * C] - ((j == targets[i]) ? 1.0f : 0.0f);
             }
-            *out = sum / N;
-            break;
         }
+    }
+
+    static void relu_backward_cpu(float *input, float *grad_output, float *grad_input, int B, int N)
+    {
+        for (int i = 0; i < B; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                int idx = i * N + j;
+                grad_input[idx] = input[idx] > 0 ? grad_output[idx] : 0;
+            }
         }
+    }
+
+    static void mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L, uint M)
+    {
+        for (uint i = 0; i < N; i++)
+        {
+            for (uint j = 0; j < M; j++)
+            {
+                float sum = 0;
+                for (uint k = 0; k < L; k++)
+                {
+                    sum += A[i * L + k] * B[k * M + j];
+                }
+                C[i * M + j] = sum;
+            }
+        }
+    }
+
+    static void reduce_on_axis_cpu(const float *A, float *out, uint N, uint M)
+    {
+        for (uint j = 0; j < M; j++)
+        {
+            float sum = 0;
+            for (uint k = 0; k < N; k++)
+            {
+                sum += A[k * M + j];
+            }
+            out[j] = sum;
+        }
+    }
+
+    static void SGD_cpu(float *params_memory, const float *grads_memory, long num_parameters, float learning_rate = 1e-3, float weight_decay = 0.0)
+    {
+        for (int i = 0; i < num_parameters; i++)
+        {
+            params_memory[i] -= learning_rate * (grads_memory[i] + weight_decay * params_memory[i]);
+        }
+    }
+
+    static float *transpose(const float *A, uint N, uint M)
+    {
+        float *out = (float *)malloc(N * M * sizeof(float));
+        for (uint i = 0; i < N; i++)
+        {
+            for (uint j = 0; j < M; j++)
+            {
+                out[j * N + i] = A[i * M + j];
+            }
+        }
+        return out;
+    }
+
+    static void run_linear_backward_cpu(const float *inp, const float *weight,
+                                 const float *up_grad, float *dLdw, float *dLdb,
+                                 float *dLdx, uint B, uint N, uint M)
+    {
+        float *up_grad_T = transpose(up_grad, B, M);
+        float *inp_T = transpose(inp, B, N);
+        float *weight_T = transpose(weight, M, N);
+        mat_mul_cpu(up_grad_T, inp, dLdw, M, B, N);
+        reduce_on_axis_cpu(up_grad, dLdb, B, M);
+        mat_mul_cpu(up_grad, weight, dLdx, B, M, N);
+        free(up_grad_T);
+        free(inp_T);
+        free(weight_T);
     }
 };
