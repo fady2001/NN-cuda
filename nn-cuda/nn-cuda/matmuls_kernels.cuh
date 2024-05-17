@@ -1,5 +1,6 @@
 #pragma once
 #include "common.hpp"
+#include <cuda_runtime.h>
 #define uint unsigned int
 
 __global__ void mat_mul_K2_none(const float *A, const float *B, float *C,

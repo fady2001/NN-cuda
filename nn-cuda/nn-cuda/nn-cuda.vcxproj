@@ -79,7 +79,7 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="array_sum.cu" />
+    <CudaCompile Include="array_reduction.cu" />
     <CudaCompile Include="crossEntropy.cu" />
     <CudaCompile Include="linear_backward.cu" />
     <CudaCompile Include="linear_forward.cu" />

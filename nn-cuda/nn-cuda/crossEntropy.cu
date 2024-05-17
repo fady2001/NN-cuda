@@ -50,7 +50,7 @@
  //	int* h_targets;
  //	const unsigned long C = 3;
  //	const unsigned long N = 3;
-	//
+
  //	int deviceIdx = 0;
  //	cudaCheck(cudaSetDevice(deviceIdx));
 
