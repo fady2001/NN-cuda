@@ -41,7 +41,7 @@ public:
     }
 
     template <class T>
-    static void softmax_cpu(const T *in, T *out, int N, int C)
+    static void log_softmax_cpu(T *in, T *out, int N, int C)
     {
         // loop over each row. each row will get softmaxed
         for (int i = 0; i < N; i++)
@@ -62,13 +62,13 @@ public:
             for (int j = 0; j < C; j++)
             {
                 // apply normalization step to ensure that the maximum value will be 0 to avoid overflow
-                out[i * C + j] = exp(in[i * C + j] - max_val);
-                sum += out[i * C + j];
+                in[i * C + j] = in[i * C + j] - max_val;
+                sum += exp(in[i * C + j]);
             }
             // output softmaxed values
             for (int j = 0; j < C; j++)
             {
-                out[i * C + j] /= sum;
+                out[i * C + j] = in[i * C + j] - log(sum);
             }
         }
     }
@@ -81,7 +81,7 @@ public:
         // input: targets is (N) of integers giving the correct index in logits
         for (int i = 0; i < N; i++)
         {
-            losses[i] = -log(input[i * C + targets[i]]);
+            losses[i] = -input[i * C + targets[i]];
         }
     }
 
@@ -129,13 +129,26 @@ public:
      * @return __global__
      */
     template <class T>
-    static void crossentropy_softmax_backward_cpu(T *down_grads, const T *probs, const int *targets, int N, int C)
+    static void crossentropy_softmax_backward_cpu(T *down_grads, const T *log_softmax, const int *targets, int N, int C, REDUCTION reduction = MEAN)
     {
-        for (int i = 0; i < N; i++)
+        if (reduction == MEAN)
         {
-            for (int j = 0; j < C; j++)
+            for (int i = 0; i < N; i++)
             {
-                down_grads[j + i * C] = probs[j + i * C] - ((j == targets[i]) ? 1.0f : 0.0f);
+                for (int j = 0; j < C; j++)
+                {
+                    down_grads[j + i * C] = (exp(log_softmax[j + i * C]) - ((j == targets[i]) ? 1.0f : 0.0f)) / N;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < N; i++)
+            {
+                for (int j = 0; j < C; j++)
+                {
+                    down_grads[j + i * C] = exp(log_softmax[j + i * C]) - ((j == targets[i]) ? 1.0f : 0.0f);
+                }
             }
         }
     }
@@ -203,8 +216,8 @@ public:
     }
 
     static void run_linear_backward_cpu(const float *inp, const float *weight,
-                                 const float *up_grad, float *dLdw, float *dLdb,
-                                 float *dLdx, uint B, uint N, uint M)
+                                        const float *up_grad, float *dLdw, float *dLdb,
+                                        float *dLdx, uint B, uint N, uint M)
     {
         float *up_grad_T = transpose(up_grad, B, M);
         float *inp_T = transpose(inp, B, N);

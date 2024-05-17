@@ -88,7 +88,7 @@
     <CudaCompile Include="reduce_on_axis.cu" />
     <CudaCompile Include="relu.cu" />
     <CudaCompile Include="SGD.cu" />
-    <CudaCompile Include="softmax.cu" />
+    <CudaCompile Include="log_softmax.cu" />
     <CudaCompile Include="soft_cross_backward.cu" />
   </ItemGroup>
   <ItemGroup>

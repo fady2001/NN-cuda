@@ -20,7 +20,7 @@
  //	// input: input are (N,C) of the probabilities from softmax
  //	// input: targets is (N) of integers giving the correct index in logits
  //	for (int i = 0; i < N; i++) {
- //		losses[i] = -log(input[i * C + targets[i]]);
+	//	losses[i] = -input[i * C + targets[i]];
  //	}
  //}
 
@@ -29,7 +29,7 @@
  //__global__ void cross_entropy_kernel(T* losses, const T* input, const int* targets, int N, int C) {
  //	int i = blockIdx.x * blockDim.x + threadIdx.x;
  //	if (i < N) {
- //		losses[i] = -log(input[i * C + targets[i]]);
+ //		losses[i] = -input[i * C + targets[i]];
  //	}
  //}
 
@@ -45,8 +45,7 @@
  //{
 	// srand(0);
 	// float* h_losses;
-	// //float* h_predictions;
-	// float h_predictions[] = {0.0000e+00, 1.5703e-03, 9.9843e-01,4.0330e-01, 5.9670e-01, 0.0000e+00,2.1251e-05, 9.9998e-01, 0.0000e+00};
+	// float* h_predictions;
  //	int* h_targets;
  //	const unsigned long C = 3;
  //	const unsigned long N = 3;
@@ -58,7 +57,7 @@
  //	h_targets = (int*)malloc(N * sizeof(int));
 
  //	h_targets = make_random_int(N, C);
- //	//h_predictions = make_random_float_01(N * C);
+ //	h_predictions = make_random_float_01(N * C);
 
  //#if TEST_PYTORTH
  //   write_npy<float>("cross-entropy-layer\\h_predictions.npy", h_predictions, 2, new unsigned long[2]{N, C});

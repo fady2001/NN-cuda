@@ -9,6 +9,13 @@
 
 #define uint unsigned int
 
+enum REDUCTION
+{
+	SUM,
+	MEAN,
+	MAX
+};
+
 // Function declarations
 template <class T>
 __host__ __device__ T ceil_div(T dividend, T divisor)
