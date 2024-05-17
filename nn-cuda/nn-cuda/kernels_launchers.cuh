@@ -27,10 +27,10 @@ public:
     relu_backward<<<grid, block>>>(input, upGrad, downGrad, B, N);
     cudaCheck(cudaDeviceSynchronize());
   }
-  static void run_softmax_kernel(const float *input, float *output, uint N,
+  static void run_log_softmax_kernel(float *input, float *output, uint N,
                                  uint C, uint block_size) {
     int num_blocks = (N + block_size - 1) / block_size;
-    softmax_kernel<<<num_blocks, block_size>>>(input, output, N, C);
+	log_softmax_kernel <<<num_blocks, block_size>>>(input, output, N, C);
     cudaCheck(cudaDeviceSynchronize());
   }
 
@@ -55,10 +55,9 @@ public:
 
   static void run_crossentropy_softmax_backward(float *down_grads, float *probs,
                                                 uint *targets, uint N, uint C,
-                                                uint block_size) {
+                                                uint block_size,REDUCTION reduction = MEAN) {
     const int grid_size = (N + block_size - 1) / block_size;
-    crossentropy_softmax_backward_kernel<<<grid_size, block_size>>>(
-        down_grads, probs, targets, N, C);
+    crossentropy_softmax_backward_kernel<<<grid_size, block_size>>>(down_grads, probs, targets, N, C, reduction);
     cudaCheck(cudaGetLastError());
   }
 
