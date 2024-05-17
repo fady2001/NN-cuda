@@ -7,10 +7,10 @@
 
  int main()
  {
-     unsigned long input_dim = 3;
-     unsigned long B = 30;
-     unsigned long H1 = 100;
-     unsigned long C = 10;
+     unsigned long input_dim = 32;
+     unsigned long B = 1024;
+     unsigned long H1 = 64;
+     unsigned long C = 8;
      ModelMemoryHandler model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
 
      // create host memory of random numbers
@@ -33,17 +33,17 @@
 	 write_npy("all-model-cpu\\a1.npy", model.GetActivations().a1, 2, new unsigned long[2]{ B, H1 });
      ModelLayers::linear_layer_forward_cpu(model.GetActivations().a1, model.GetParams().ln2w, model.GetParams().ln2b, model.GetActivations().ln2, B, H1, C);
 	 write_npy("all-model-cpu\\ln2.npy", model.GetActivations().ln2, 2, new unsigned long[2]{ B, C });
-     ModelLayers::softmax_cpu(model.GetActivations().ln2, model.GetActivations().sm, B, C);
+     ModelLayers::log_softmax_cpu(model.GetActivations().ln2, model.GetActivations().sm, B, C);
 	 write_npy("all-model-cpu\\sm.npy", model.GetActivations().sm, 2, new unsigned long[2]{ B, C });
      ModelLayers::cross_entropy_cpu(model.GetActivations().loss, model.GetActivations().sm, target, B, C);
 	 write_npy("all-model-cpu\\loss.npy", model.GetActivations().loss, 1, new unsigned long[1]{ B});
-     ModelLayers::reduce_cpu(model.GetActivations().reduced_loss, model.GetActivations().loss, B);
+     ModelLayers::reduce_cpu(model.GetActivations().reduced_loss, model.GetActivations().loss, B,REDUCTION::SUM);
 
      // print results
      printf("Reduced Loss: %f\n", *model.GetActivations().reduced_loss);
 
      // backpropagation
-     ModelLayers::crossentropy_softmax_backward_cpu(model.GetDownstreamGradients().dsm, model.GetActivations().sm, target, B, C);
+     ModelLayers::crossentropy_softmax_backward_cpu(model.GetDownstreamGradients().dsm, model.GetActivations().sm, target, B, C,REDUCTION::SUM);
 	 write_npy("all-model-cpu\\dsm.npy", model.GetDownstreamGradients().dsm, 2, new unsigned long[2]{ B, C });
      ModelLayers::run_linear_backward_cpu(model.GetActivations().a1, model.GetParams().ln2w,
                                           model.GetDownstreamGradients().dsm, model.GetGradients().ln2w_grad,
