@@ -85,7 +85,7 @@ public:
     }
 
     template <class T>
-    static void array_sum_cpu(T *out, const T *in, int N, REDUCTION reduction = SUM)
+    static void reduce_cpu(T *out, const T *in, int N, REDUCTION reduction = SUM)
     {
         switch (reduction)
         {

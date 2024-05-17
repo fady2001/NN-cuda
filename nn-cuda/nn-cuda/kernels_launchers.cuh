@@ -48,7 +48,7 @@ public:
                                     uint block_size) {
     // (dividend + divisor - 1) / divisor
     int num_blocks = (size + block_size - 1) / block_size;
-    array_sum_kernel3<<<1, num_blocks, block_size * sizeof(float)>>>(
+    reduce_kernel3<<<1, num_blocks, block_size * sizeof(float)>>>(
         d_a, d_result, size);
     cudaCheck(cudaGetLastError());
   }

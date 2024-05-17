@@ -94,7 +94,7 @@ __global__ void cross_entropy_kernel(T *losses, const T *input,
 }
 
 template <class T>
-__global__ void array_sum_kernel3(T *d_a, T *d_result, uint size) {
+__global__ void reduce_kernel3(T *d_a, T *d_result, uint size) {
   extern __shared__ T v[];
   uint amount_per_thread = (size + blockDim.x - 1) / blockDim.x;
   uint start_index = threadIdx.x * amount_per_thread;
