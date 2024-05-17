@@ -339,3 +339,4 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 nn-cuda/with-torch-tests/
+nn-cuda/dataset/
