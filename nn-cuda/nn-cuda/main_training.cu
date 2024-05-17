@@ -25,6 +25,7 @@ void load_batch(trainData &data, float *curr_input, uint *current_target,
 // Function to perform a single training step
 void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
                 uint input_dim, uint H1, uint C) {
+
   int deviceIdx = 0;
   cudaCheck(cudaSetDevice(deviceIdx));
 
@@ -36,8 +37,7 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
   cudaCheck(cudaMemcpy(d_inp, inp, B * input_dim * sizeof(float),
                        cudaMemcpyHostToDevice));
   cudaCheck(
-      cudaMemcpy(d_target, target, B * sizeof(int), cudaMemcpyHostToDevice));
-
+      cudaMemcpy(d_target, target, B * sizeof(uint), cudaMemcpyHostToDevice));
   // run the model
   KernelsLaunchers::linear_layer(
       d_inp, d_model.GetParams().ln1w, d_model.GetParams().ln1b,
@@ -47,16 +47,15 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
   KernelsLaunchers::linear_layer(
       d_model.GetActivations().a1, d_model.GetParams().ln2w,
       d_model.GetParams().ln2b, d_model.GetActivations().ln2, B, H1, C, 32);
-  KernelsLaunchers::run_softmax_kernel(d_model.GetActivations().ln2,
-                                       d_model.GetActivations().sm, B, C, 32);
+  KernelsLaunchers::run_log_softmax_kernel(
+      d_model.GetActivations().ln2, d_model.GetActivations().sm, B, C, 32);
   KernelsLaunchers::run_cross_entropy_kernel(d_model.GetActivations().loss,
                                              d_model.GetActivations().sm,
                                              d_target, B, C, 32);
-  //      KernelsLaunchers::reduce_kernel3(d_model.GetActivations().loss,
-  //      d_model.GetActivations().reduced_loss, B, 32);
   KernelsLaunchers::run_reduce_kernel3(d_model.GetActivations().loss,
                                        d_model.GetActivations().reduced_loss, B,
                                        REDUCTION::MEAN, 32);
+
   // cuda synchronize();
   cudaCheck(cudaDeviceSynchronize());
   // copy the loss to the host
@@ -68,21 +67,30 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
   // backpropagation
   KernelsLaunchers::run_crossentropy_softmax_backward(
       d_model.GetDownstreamGradients().dsm, d_model.GetActivations().sm,
-      d_target, B, C, 32);
+      d_target, B, C, 32, REDUCTION::MEAN);
+  // get_from_gpu_and_print("dsm", d_model.GetDownstreamGradients().dsm, B * C);
+
   KernelsLaunchers::runLinearBackward(
       d_model.GetActivations().a1, d_model.GetParams().ln2w,
       d_model.GetDownstreamGradients().dsm, d_model.GetGradients().ln2w_grad,
       d_model.GetGradients().ln2b_grad, d_model.GetDownstreamGradients().dln2,
       B, H1, C, 32);
+
+  // get_from_gpu_and_print("dln2", d_model.GetDownstreamGradients().dln2, B *
+  // H1); get_from_gpu_and_print("ln2w_grad", d_model.GetGradients().ln2w_grad,
+  // C * H1); get_from_gpu_and_print("ln2b_grad",
+  // d_model.GetGradients().ln2b_grad, C);
+
   KernelsLaunchers::runReluBackward(
       d_model.GetActivations().ln1, d_model.GetDownstreamGradients().dln2,
       d_model.GetDownstreamGradients().da1, B, H1, 32);
+  // get_from_gpu_and_print("da1", d_model.GetDownstreamGradients().da1, B *
+  // H1);
   KernelsLaunchers::runLinearBackward(
       d_inp, d_model.GetParams().ln1w, d_model.GetDownstreamGradients().da1,
       d_model.GetGradients().ln1w_grad, d_model.GetGradients().ln1b_grad,
       d_model.GetDownstreamGradients().dln1, B, input_dim, H1, 32);
-
-  // Update the parameters
+  // Magic optimizer
   KernelsLaunchers::SGD_run_kernel(d_model.GetParamsMemory(),
                                    d_model.GetGradientsMemory(),
                                    d_model.get_num_parameters(), 0.01, 0.0, 32);
