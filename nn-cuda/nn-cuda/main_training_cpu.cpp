@@ -3,6 +3,10 @@
 #include "ModelLayers.hpp"
 #include <cmath>
 #include <vector>
+#include <chrono>
+#include <numeric>
+#include <algorithm>
+
 
 #define TEST_PYTORTH true
 
@@ -35,7 +39,7 @@ void train_step(ModelMemoryHandler &model, float *inp, uint *target, uint B, uin
 	ModelLayers::relu_forward_cpu(model.GetActivations().ln1, model.GetActivations().a1, B, H1);
 	ModelLayers::linear_layer_forward_cpu(model.GetActivations().a1, model.GetParams().ln2w, model.GetParams().ln2b, model.GetActivations().ln2, B, H1, C);
 	ModelLayers::log_softmax_cpu(model.GetActivations().ln2, model.GetActivations().sm, B, C);
-	ModelLayers::cross_entropy_cpu(model.GetActivations().loss, model.GetActivations().sm, target, B, C);
+	ModelLayers::nll_loss(model.GetActivations().loss, model.GetActivations().sm, target, B, C);
 	ModelLayers::reduce_cpu(model.GetActivations().reduced_loss, model.GetActivations().loss, B, reduction_type);
 
 	// print results
@@ -85,6 +89,7 @@ int main()
             new unsigned long[1]{C});
 #endif
 
+  std::vector<double> times;
   for (int epoch = 0; epoch < EPOCHS; epoch++)
   {
       printf("Epoch %d\n", epoch + 1);
@@ -97,13 +102,20 @@ int main()
           load_batch(td, inp, target, batch_to_load, batch);
 
           // Train on batch
-		  train_step(h_model, inp, target, batch_to_load, input_dim, H1, C);
-
+            auto start = std::chrono::high_resolution_clock::now();
+            train_step(h_model, inp, target, batch_to_load, input_dim, H1, C);
+            auto end = std::chrono::high_resolution_clock::now();
+            double elapsed_time = std::chrono::duration<double>(end - start).count();
+            times.push_back(elapsed_time);
+            // printf("Time taken: %f\n", elapsed_time);
           // Free allocated host memory for the batch
           free(inp);
           free(target);
       }
   }
+  // average time taken
+  double sum = std::accumulate(times.begin(), times.end(), 0.0);
+  printf("average time taken: %f\n",sum / times.size());
 
   return 0;
 }
