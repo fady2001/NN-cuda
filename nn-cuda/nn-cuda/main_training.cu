@@ -122,7 +122,7 @@ int main() {
   uint B = 1024;
   trainData td{};
   read_training_data("../dataset/x_train.npy", "../dataset/y_train.npy", td,
-                     false, true);
+                     true, true);
   uint input_dim = td.input_shape[1];
   uint H1 = 256;
   uint C = 16;
