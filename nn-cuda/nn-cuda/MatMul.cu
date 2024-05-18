@@ -88,10 +88,10 @@ void run_mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
 
 int main() {
   srand(0);
-  uint A_d1 = 1024;
+  uint A_d1 = 512;
   uint A_d2 = 1024;
   uint B_d1 = 1024;
-  uint B_d2 = 1024;
+  uint B_d2 = 512;
 
   bool is_f_T = false;
   bool is_s_T = false;
@@ -145,7 +145,7 @@ int main() {
     int sqrt_block_size = sqrt_block_sizes[j];
     printf("Checking block size %d x %d.\n", sqrt_block_size, sqrt_block_size);
     mat_mul_dispatcher(d_A, d_B, d_C, N, L, M, is_f_T, is_s_T, sqrt_block_size,
-                       2);
+                       1);
     validate_result(d_C, C, "out", size_t(N) * M, 1e-4f);
   }
 
@@ -157,7 +157,7 @@ int main() {
     int repeat_times = 100;
     float elapsed_time =
         benchmark_kernel(repeat_times, mat_mul_dispatcher, d_A, d_B, d_C, A_d1,
-                         A_d2, B_d2, is_f_T, is_s_T, sqrt_block_size, 2);
+                         A_d2, B_d2, is_f_T, is_s_T, sqrt_block_size, 1);
     // napkin math: estimate the flops achieved
     // e.g. A100 40GB PCIe is advertised at 19.5 TFLOPS fp32
     float tflops = (float)N * L * M * 2 / elapsed_time * 1e3f / 1e12f;
