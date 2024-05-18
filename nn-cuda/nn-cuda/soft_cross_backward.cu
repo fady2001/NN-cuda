@@ -15,7 +15,7 @@
 //* @return __global__
 //*/
 //template <class T>
-//void crossentropy_softmax_backward_cpu(T* down_grads, const T* log_softmax, const int* targets, int N, int C, REDUCTION reduction = MEAN)
+//void crossentropy_softmax_backward_cpu(T* down_grads, const T* log_softmax, uint* targets, int N, int C, REDUCTION reduction = MEAN)
 //{
 //	if (reduction == MEAN)
 //	{
@@ -40,7 +40,7 @@
 //}
 //
 //template <class T>
-//__global__ void crossentropy_softmax_backward_kernel(T* down_grads, const T* probs, const int* targets, int N, int C, REDUCTION reduction = MEAN)
+//__global__ void crossentropy_softmax_backward_kernel(T* down_grads, const T* probs, uint* targets, int N, int C, REDUCTION reduction = MEAN)
 //{
 //	if (reduction == MEAN)
 //	{
@@ -68,7 +68,7 @@
 //
 //// kernel launcher
 //template <class T>
-//void run_crossentropy_softmax_backward(T* down_grads, T* probs, int* targets, int N, int C, int block_size, REDUCTION reduction = MEAN)
+//void run_crossentropy_softmax_backward(T* down_grads, T* probs, uint* targets, int N, int C, int block_size, REDUCTION reduction = MEAN)
 //{
 //	const int grid_size = (N + block_size - 1) / block_size;
 //	crossentropy_softmax_backward_kernel << <grid_size, block_size >> > (down_grads, probs, targets, N, C, reduction);
@@ -80,7 +80,7 @@
 //	srand(0);
 //	float* down_grads;
 //	float* h_probs;
-//	int* h_targets;
+//	uint* h_targets;
 //	const unsigned long C = 3;
 //	const unsigned long N = 3;
 //
@@ -107,14 +107,14 @@
 //	// GPU
 //	float* d_down_grads;
 //	float* d_probs;
-//	int* d_targets;
+//	uint* d_targets;
 //	cudaCheck(cudaMalloc(&d_down_grads, N * C * sizeof(float)));
 //	cudaCheck(cudaMalloc(&d_probs, N * C * sizeof(float)));
-//	cudaCheck(cudaMalloc(&d_targets, N * sizeof(int)));
+//	cudaCheck(cudaMalloc(&d_targets, N * sizeof(uint)));
 //
 //	cudaCheck(cudaMemcpy(d_down_grads, down_grads, N * C * sizeof(float), cudaMemcpyHostToDevice));
 //	cudaCheck(cudaMemcpy(d_probs, h_probs, N * C * sizeof(float), cudaMemcpyHostToDevice));
-//	cudaCheck(cudaMemcpy(d_targets, h_targets, N * sizeof(int), cudaMemcpyHostToDevice));
+//	cudaCheck(cudaMemcpy(d_targets, h_targets, N * sizeof(uint), cudaMemcpyHostToDevice));
 //
 //	int block_sizes[] = { 32, 64, 128, 256, 512, 1024 };
 //	// first check the correctness of the kernel
