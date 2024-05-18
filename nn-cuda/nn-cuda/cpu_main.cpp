@@ -5,7 +5,7 @@
  //#include "ModelMemoryHandler.cuh"
  //#define TEST_PYTORTH true
 
- //auto reduction_type = REDUCTION::MEAN;
+ //auto reduction_type = REDUCTION::SUM;
 
  //int main()
  //{

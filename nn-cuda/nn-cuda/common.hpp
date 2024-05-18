@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <functional>
+
 
 #define uint unsigned int
 
