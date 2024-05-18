@@ -80,7 +80,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="array_reduction.cu" />
-    <CudaCompile Include="crossEntropy.cu" />
+    <CudaCompile Include="cross_entropy.cu" />
+    <CudaCompile Include="main_merged_cross.cu" />
+    <CudaCompile Include="main_training_merged_cross.cu" />
+    <CudaCompile Include="nll_loss.cu" />
     <CudaCompile Include="linear_backward.cu" />
     <CudaCompile Include="linear_forward.cu" />
     <CudaCompile Include="main.cu" />
@@ -102,7 +105,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cpu_main.cpp" />
+    <ClCompile Include="cpu_main_merged_cross.cpp" />
     <ClCompile Include="main_training_cpu.cpp" />
+    <ClCompile Include="main_training_cpu_merged_cross.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

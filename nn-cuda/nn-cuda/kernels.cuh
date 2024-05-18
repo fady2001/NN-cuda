@@ -91,7 +91,7 @@ __global__ void log_softmax_kernel(T* in_h, T* out_d, int N, int C)
 
 // kernel for cross_entropy
 template <class T>
-__global__ void cross_entropy_kernel(T* losses, const T* input,
+__global__ void nll_loss_kernel(T* losses, const T* input,
 	const uint* targets, uint N, uint C) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < N) {
@@ -266,5 +266,40 @@ __global__ void SGD_kernel(float* params_memory, const float* grads_memory, long
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < num_parameters) {
 		params_memory[i] -= learning_rate * (grads_memory[i] + weight_decay * params_memory[i]);
+	}
+}
+
+template <class T>
+__global__ void cross_entropy_kernel(T *in, uint*targets,T *softmaxed,T*losses, int N, int C)
+{
+	// input dimension (N,C)
+	// output dimension (N,C)
+	// get actual index in in_h and out_d
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		T max_val = in[i * C];
+		for (int j = 1; j < C; j++)
+		{
+			if (in[i * C + j] > max_val)
+			{
+				max_val = in[i * C + j];
+			}
+		}
+
+		T sum = 0;
+		for (int j = 0; j < C; j++)
+		{
+			// apply normalization step to ensure that the maximum value will be 0 to avoid overflow
+			in[i * C + j] = in[i * C + j] - max_val;
+			sum += exp(in[i * C + j]);
+		}
+		// output softmaxed values
+		for (int j = 0; j < C; j++)
+		{
+			softmaxed[i * C + j] = in[i * C + j] - log(sum);
+		}
+       // calculate the loss
+       losses[i] = -softmaxed[i * C + targets[i]];
 	}
 }

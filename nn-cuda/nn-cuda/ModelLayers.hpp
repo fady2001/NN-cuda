@@ -1,6 +1,5 @@
 #pragma once
 
-
 class ModelLayers
 {
 public:
@@ -67,7 +66,7 @@ public:
     }
 
     template <class T>
-    static void cross_entropy_cpu(T *losses, T *input, uint *targets, int N, int C)
+    static void nll_loss(T *losses, T *input, uint *targets, int N, int C)
     {
         // output: losses is (N) of the individual losses for each batch
         // input: input are (N,C) of the probabilities from softmax
@@ -102,6 +101,41 @@ public:
         if (reduction == MEAN)
         {
             *out /= N;
+        }
+    }
+
+    template <class T>
+    static void cross_entropy_cpu(T *in, uint *targets, T *softmaxed, T *losses, int N, int C)
+    {
+        // loop over each row. each row will get softmaxed
+        for (int i = 0; i < N; i++)
+        {
+            // assume that the first element in the row is the maximum
+            T max_val = in[i * C];
+            // loop to get the maximum value of each row
+            for (int j = 1; j < C; j++)
+            {
+                if (in[i * C + j] > max_val)
+                {
+                    max_val = in[i * C + j];
+                }
+            }
+
+            T sum = 0;
+            // loop over the row to calculate the sum and apply normalization
+            for (int j = 0; j < C; j++)
+            {
+                // apply normalization step to ensure that the maximum value will be 0 to avoid overflow
+                in[i * C + j] = in[i * C + j] - max_val;
+                sum += exp(in[i * C + j]);
+            }
+            // output softmaxed values
+            for (int j = 0; j < C; j++)
+            {
+                softmaxed[i * C + j] = in[i * C + j] - log(sum);
+            }
+            // calculate the loss
+            losses[i] = -softmaxed[i * C + targets[i]];
         }
     }
 
