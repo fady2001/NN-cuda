@@ -1,11 +1,5 @@
 #pragma once
 
-enum REDUCTION
-{
-    SUM,
-    MEAN,
-    MAX
-};
 
 class ModelLayers
 {
@@ -13,7 +7,6 @@ public:
     template <class T>
     static void linear_layer_forward_cpu(T *X, T *W, T *bias, T *y, int B, int N, int M)
     {
-
         for (int i = 0; i < B; i++)
         {
             for (int j = 0; j < M; j++)
@@ -74,7 +67,7 @@ public:
     }
 
     template <class T>
-    static void cross_entropy_cpu(T *losses, const T *input, const int *targets, int N, int C)
+    static void cross_entropy_cpu(T *losses, T *input, uint *targets, int N, int C)
     {
         // output: losses is (N) of the individual losses for each batch
         // input: input are (N,C) of the probabilities from softmax
@@ -129,7 +122,7 @@ public:
      * @return __global__
      */
     template <class T>
-    static void crossentropy_softmax_backward_cpu(T *down_grads, const T *log_softmax, const int *targets, int N, int C, REDUCTION reduction = MEAN)
+    static void crossentropy_softmax_backward_cpu(T *down_grads, T *log_softmax, uint *targets, int N, int C, REDUCTION reduction = MEAN)
     {
         if (reduction == MEAN)
         {
