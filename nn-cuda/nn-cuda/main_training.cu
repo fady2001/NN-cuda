@@ -57,12 +57,10 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
       d_model.GetActivations().a1, d_model.GetParams().ln2w,
       d_model.GetParams().ln2b, d_model.GetActivations().ln2, B, H1, C, 32,
       stream);
-  KernelsLaunchers::run_log_softmax_kernel(d_model.GetActivations().ln2,
-                                           d_model.GetActivations().sm, B, C,
-                                           32, stream);
-  KernelsLaunchers::run_cross_entropy_kernel(d_model.GetActivations().loss,
-                                             d_model.GetActivations().sm,
-                                             d_target, B, C, 32, stream);
+  KernelsLaunchers::run_cross_entropy_loss_kernel(
+      d_model.GetActivations().ln2, d_target, d_model.GetActivations().sm,
+      d_model.GetActivations().loss, B, C, 32, stream);
+
   KernelsLaunchers::run_reduce_kernel3(d_model.GetActivations().loss,
                                        d_model.GetActivations().reduced_loss, B,
                                        REDUCTION::MEAN, 32, stream);
@@ -145,6 +143,9 @@ int main() {
   // move to GPU
   ModelMemoryHandler d_model;
   h_model.model_to_cuda(&d_model);
+  cudaEvent_t start_event, stop_event;
+  cudaCheck(cudaEventCreate(&start_event));
+  cudaCheck(cudaEventCreate(&stop_event));
 
   cudaEvent_t events[2];
   cudaStream_t streams[2];
@@ -152,10 +153,11 @@ int main() {
     cudaCheck(cudaEventCreate(&events[i]));
     cudaCheck(cudaStreamCreate(&streams[i]));
   }
-
+  float total_time = 0;
   bool turn = false;
   for (int epoch = 0; epoch < EPOCHS; epoch++) {
     printf("Epoch %d\n", epoch + 1);
+    cudaCheck(cudaEventRecord(start_event));
     for (int batch = 0; batch < NUM_BATCHES; batch++) {
       // Load batch
       float *inp;
@@ -167,7 +169,15 @@ int main() {
                  events, streams[turn]);
       turn = !turn;
     }
+    cudaCheck(cudaEventRecord(stop_event));
+    cudaCheck(cudaEventSynchronize(stop_event));
+    float elapsed_time;
+    cudaCheck(cudaEventElapsedTime(&elapsed_time, start_event, stop_event));
+    printf("Epoch time: %f\n", elapsed_time);
+    total_time += elapsed_time;
   }
+  printf("Total time: %f\n", total_time);
+  printf("Average time per epoch: %f\n", total_time / EPOCHS);
   cudaCheck(cudaDeviceSynchronize());
   float reduced_loss;
   cudaCheck(cudaMemcpy(&reduced_loss, d_model.GetActivations().reduced_loss,
@@ -177,5 +187,7 @@ int main() {
     cudaCheck(cudaEventDestroy(events[i]));
     cudaCheck(cudaStreamDestroy(streams[i]));
   }
+  cudaCheck(cudaEventDestroy(start_event));
+  cudaCheck(cudaEventDestroy(stop_event));
   return 0;
 }

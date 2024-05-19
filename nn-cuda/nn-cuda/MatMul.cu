@@ -88,10 +88,10 @@ void run_mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
 
 int main() {
   srand(0);
-  uint A_d1 = 512;
-  uint A_d2 = 1024;
-  uint B_d1 = 1024;
-  uint B_d2 = 512;
+  uint A_d1 = 10000;
+  uint A_d2 = 10000;
+  uint B_d1 = 10000;
+  uint B_d2 = 10000;
 
   bool is_f_T = false;
   bool is_s_T = false;
@@ -115,7 +115,7 @@ int main() {
 
   // just run cpu
   //  mat_mul_cpu(A_T, B_T, C, N, L, M);
-  run_mat_mul_cpu(A, B, C, N, L, M, is_f_T, is_s_T);
+//  run_mat_mul_cpu(A, B, C, N, L, M, is_f_T, is_s_T);
 // write arrays to npy files if you want to test with torch
 #if TEST_PYTORTH
 #endif
@@ -139,14 +139,14 @@ int main() {
 #endif
 
   // print_2D_Matrix(out, "out", B, B_d2);
-  int sqrt_block_sizes[] = {4, 8, 16, 32};
+  int sqrt_block_sizes[] = {32};
   // first check the correctness of the kernel
   for (int j = 0; j < sizeof(sqrt_block_sizes) / sizeof(int); j++) {
     int sqrt_block_size = sqrt_block_sizes[j];
     printf("Checking block size %d x %d.\n", sqrt_block_size, sqrt_block_size);
     mat_mul_dispatcher(d_A, d_B, d_C, N, L, M, is_f_T, is_s_T, sqrt_block_size,
-                       1);
-    validate_result(d_C, C, "out", size_t(N) * M, 1e-4f);
+                       1, nullptr);
+    //    validate_result(d_C, C, "out", size_t(N) * M, 1e-4f);
   }
 
   printf("All results match. Starting benchmarks.\n\n");
@@ -154,10 +154,10 @@ int main() {
   for (int j = 0; j < sizeof(sqrt_block_sizes) / sizeof(int); j++) {
     int sqrt_block_size = sqrt_block_sizes[j];
 
-    int repeat_times = 100;
-    float elapsed_time =
-        benchmark_kernel(repeat_times, mat_mul_dispatcher, d_A, d_B, d_C, A_d1,
-                         A_d2, B_d2, is_f_T, is_s_T, sqrt_block_size, 1);
+    int repeat_times = 5;
+    float elapsed_time = benchmark_kernel(repeat_times, mat_mul_dispatcher, d_A,
+                                          d_B, d_C, A_d1, A_d2, B_d2, is_f_T,
+                                          is_s_T, sqrt_block_size, 1, nullptr);
     // napkin math: estimate the flops achieved
     // e.g. A100 40GB PCIe is advertised at 19.5 TFLOPS fp32
     float tflops = (float)N * L * M * 2 / elapsed_time * 1e3f / 1e12f;

@@ -40,15 +40,14 @@ public:
     //    cudaCheck(cudaDeviceSynchronize());
   }
 
-  static void run_cross_entropy_kernel(float *losses, const float *probs,
-                                       const uint *targets, uint N, uint C,
-                                       const uint block_size,
-                                       cudaStream_t stream = nullptr) {
-    //(dividend + divisor - 1) / divisor
-    const int grid_size = (N + block_size - 1) / block_size;
-    cross_entropy_kernel<<<grid_size, block_size, 0, stream>>>(losses, probs,
-                                                               targets, N, C);
-    //    cudaCheck(cudaGetLastError());
+  template <class T>
+  static void run_cross_entropy_loss_kernel(T *in, uint *targets, T *softmaxed,
+                                            T *losses, int N, int C,
+                                            int block_size,
+                                            cudaStream_t stream = nullptr) {
+    int num_blocks = ceil_div(N, block_size);
+    cross_entropy_kernel<<<num_blocks, block_size, 0, stream>>>(
+        in, targets, softmaxed, losses, N, C);
   }
 
   static void run_reduce_kernel3(float *d_a, float *d_result, uint size,
