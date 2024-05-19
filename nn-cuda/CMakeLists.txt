@@ -32,8 +32,7 @@ set(SOURCES ${CPP_FILES})
 
 # Create the executable from all source files
 # add_executable(nn-cuda "./nn-cuda/main.cu" ${SOURCES})
-add_executable(nn-cuda "nn-cuda/main_training.cu" ${SOURCES}
-        nn-cuda/main_training.cu)
+add_executable(nn-cuda "nn-cuda/main_training.cu" ${SOURCES})
 
 # Set include directories for the target
 target_include_directories(nn-cuda PRIVATE include vendor)
@@ -45,3 +44,4 @@ target_include_directories(nn-cuda PRIVATE include vendor)
 # target_link_libraries(nn-cuda ${CUDA_LIBRARIES})
 add_executable(training nn-cuda/main_training.cu)
 add_executable(MatMul nn-cuda/MatMul.cu)
+add_executable(line_back nn-cuda/linear_backward.cu)

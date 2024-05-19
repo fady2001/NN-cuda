@@ -117,14 +117,14 @@ void train_step(ModelMemoryHandler &d_model, float *inp, uint *target, uint B,
 }
 
 int main() {
-  uint B = 1024;
+  uint B = 256;
   trainData td{};
   read_training_data("../dataset/x_train.npy", "../dataset/y_train.npy", td,
                      true, true);
   uint input_dim = td.input_shape[1];
   uint H1 = 256;
   uint C = 16;
-  const int EPOCHS = 5; // Number of epochs to train
+  const int EPOCHS = 20; // Number of epochs to train
   uint NUM_BATCHES = (td.input_shape[0] + B - 1) / B;
   ModelMemoryHandler h_model(input_dim, B, H1, C, RANDOM_V, RANDOM_V);
 
@@ -166,7 +166,7 @@ int main() {
       load_batch(td, &inp, &target, batch_to_load, batch);
       // Train on batch
       train_step(d_model, inp, target, batch_to_load, input_dim, H1, C, turn,
-                 events, streams[turn]);
+                 events);
       turn = !turn;
     }
     cudaCheck(cudaEventRecord(stop_event));
