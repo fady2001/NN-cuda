@@ -126,7 +126,6 @@ int main() {
 
   measureExecutionTime(cross_entropy_cpu<float>, h_inp, h_targets, h_softmaxed,
                        h_losses, N, C);
-
 #if TEST_PYTORTH
   write_npy("cross-entropy-layer\\h_softmaxed.npy", h_softmaxed, 2,
             new unsigned long[2]{N, C});
