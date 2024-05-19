@@ -41,7 +41,6 @@ __global__ void mat_mul_K2_none(const float *A, const float *B, float *C,
     C[row * M + col] = sum;
   }
 }
-#define index(row, col, M) (row * M + col)
 
 __global__ void mat_mul_K2_optimized(const float *A, const float *B, float *C,
                                      uint N, uint L, uint M) {
@@ -81,6 +80,58 @@ __global__ void mat_mul_K2_optimized(const float *A, const float *B, float *C,
 
   if (col < M && row < N) {
     C[row * M + col] = sum;
+  }
+}
+
+template <uint N_ELEM_PER_THREAD>
+__global__ void mat_mul_K2_optimized_v2(const float *A, const float *B,
+                                        float *C, uint N, uint L, uint M) {
+  extern __shared__ float shared_mem[];
+  uint TILE_WIDTH = blockDim.x;
+  float *As = shared_mem;
+  float *Bs = shared_mem + TILE_WIDTH * TILE_WIDTH;
+
+  uint tx = threadIdx.x;
+  uint ty = threadIdx.y;
+  uint row = blockIdx.y * TILE_WIDTH + ty;
+  uint col_start = blockIdx.x * TILE_WIDTH + tx;
+
+  float sum[N_ELEM_PER_THREAD] = {0.0f};
+
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+    uint tile_col = tile * TILE_WIDTH + tx;
+
+    // Load tiles into shared memory
+    if (row < N && tile_col < L) {
+      As[ty * TILE_WIDTH + tx] = A[row * L + tile_col];
+    } else {
+      As[ty * TILE_WIDTH + tx] = 0.0f;
+    }
+
+    for (uint e = 0; e < N_ELEM_PER_THREAD; e++) {
+      uint current_col = col_start + e * blockDim.x;
+      if (current_col < M && tile_col < L) {
+        Bs[ty * TILE_WIDTH + tx] = B[tile_col * M + current_col];
+      } else {
+        Bs[ty * TILE_WIDTH + tx] = 0.0f;
+      }
+
+      __syncthreads();
+
+#pragma unroll
+      for (uint k = 0; k < TILE_WIDTH; k++) {
+        sum[e] += As[ty * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + tx];
+      }
+
+      __syncthreads();
+    }
+  }
+
+  for (uint e = 0; e < N_ELEM_PER_THREAD; e++) {
+    uint current_col = col_start + e * blockDim.x;
+    if (row < N && current_col < M) {
+      C[row * M + current_col] = sum[e];
+    }
   }
 }
 
@@ -223,6 +274,16 @@ void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
       mat_mul_K2_optimized<<<grid_dim, block_dim, shared_mem_size, stream>>>(
           A, B, C, N, L, M);
     else if (version == 2) {
+      const int TILE_WIDTH = 32;
+      constexpr uint N_ELEM_PER_THREAD = 2; // Set your desired value here
+      dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
+      dim3 dimGrid((M + TILE_WIDTH * N_ELEM_PER_THREAD - 1) /
+                       (TILE_WIDTH * N_ELEM_PER_THREAD),
+                   (N + TILE_WIDTH - 1) / TILE_WIDTH);
+      size_t shared_mem_size = 2 * TILE_WIDTH * TILE_WIDTH * sizeof(float);
+
+      mat_mul_K2_optimized_v2<N_ELEM_PER_THREAD>
+          <<<dimGrid, dimBlock, shared_mem_size>>>(A, B, C, N, L, M);
     }
   } else if (is_first_T && !is_second_T) {
     if (version > 0) {

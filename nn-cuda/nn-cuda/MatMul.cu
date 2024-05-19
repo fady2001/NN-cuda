@@ -88,10 +88,10 @@ void run_mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
 
 int main() {
   srand(0);
-  uint A_d1 = 10000;
-  uint A_d2 = 10000;
-  uint B_d1 = 10000;
-  uint B_d2 = 10000;
+  uint A_d1 = 512;
+  uint A_d2 = 512;
+  uint B_d1 = 512;
+  uint B_d2 = 512;
 
   bool is_f_T = false;
   bool is_s_T = false;
@@ -115,7 +115,7 @@ int main() {
 
   // just run cpu
   //  mat_mul_cpu(A_T, B_T, C, N, L, M);
-//  run_mat_mul_cpu(A, B, C, N, L, M, is_f_T, is_s_T);
+  run_mat_mul_cpu(A, B, C, N, L, M, is_f_T, is_s_T);
 // write arrays to npy files if you want to test with torch
 #if TEST_PYTORTH
 #endif
@@ -146,7 +146,7 @@ int main() {
     printf("Checking block size %d x %d.\n", sqrt_block_size, sqrt_block_size);
     mat_mul_dispatcher(d_A, d_B, d_C, N, L, M, is_f_T, is_s_T, sqrt_block_size,
                        1, nullptr);
-    //    validate_result(d_C, C, "out", size_t(N) * M, 1e-4f);
+    validate_result(d_C, C, "out", size_t(N) * M, 1e-4f);
   }
 
   printf("All results match. Starting benchmarks.\n\n");
