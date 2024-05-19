@@ -37,7 +37,7 @@
 //  }
 //}
 //
-//void mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
+// void mat_mul_cpu(const float *A, const float *B, float *C, uint N, uint L,
 //                 uint M) {
 //  for (uint i = 0; i < N; i++) {
 //    for (uint j = 0; j < M; j++) {
@@ -48,7 +48,7 @@
 //      C[i * M + j] = sum;
 //    }
 //  }
-//}
+// }
 //float *transpose(const float *A, uint N, uint M) {
 //  float *out = (float *)malloc(N * M * sizeof(float));
 //  for (uint i = 0; i < N; i++) {

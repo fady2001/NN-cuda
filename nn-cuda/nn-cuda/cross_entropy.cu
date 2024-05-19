@@ -99,7 +99,7 @@
 //int main()
 //{
 //	srand(0);
-//	const unsigned long N = 3, C = 3;
+//	const unsigned long N =10000, C = 10000;
 //
 //	int deviceIdx = 0;
 //	cudaCheck(cudaSetDevice(deviceIdx));
@@ -129,33 +129,33 @@
 //   cudaCheck(cudaMemcpy(d_inp, h_inp, N * C * sizeof(float), cudaMemcpyHostToDevice));
 //   cudaCheck(cudaMemcpy(d_targets, h_targets, N * sizeof(uint), cudaMemcpyHostToDevice));
 //
-//   cross_entropy_cpu(h_inp, h_targets, h_softmaxed, h_losses, N, C);
+//   measureExecutionTime(cross_entropy_cpu<float>,h_inp, h_targets, h_softmaxed, h_losses, N, C);
 //
 //#if TEST_PYTORTH
 //write_npy("cross-entropy-layer\\h_softmaxed.npy", h_softmaxed, 2, new unsigned long[2]{N, C});
 //write_npy("cross-entropy-layer\\h_losses.npy", h_losses, 1, new unsigned long[1]{N});
 //#endif
 //
-//	int block_sizes[] = { 32, 64, 128, 256, 512, 1024 };
-//	// first check the correctness of the kernel
-//	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
-//		int block_size = block_sizes[j];
-//		printf("Checking block size %d.\n", block_size);
-//       run_kernel1<float>(d_inp, d_targets, d_softmaxed, d_losses, N, C, block_sizes[j]);
-//       validate_result(d_softmaxed, h_softmaxed, "out", N, 1e-4f);
-//       validate_result(d_losses, h_losses, "out", N, 1e-4f);
-//	}
-//
-//	printf("All results match. Starting benchmarks.\n\n");
-//	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
-//		int block_size = block_sizes[j];
-//
-//		int repeat_times = 100;
-//		float elapsed_time = benchmark_kernel(repeat_times, run_kernel1<float>, d_inp, d_targets, d_softmaxed, d_losses, N, C, block_sizes[j]);
-//
-//		printf("block_size %4d | time %.4f ms | per token %.2f µs\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
-//	}
-//
+	//int block_sizes[] = {8,16, 32, 64, 128, 256, 512, 1024 };
+	//// first check the correctness of the kernel
+	//for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+	//	int block_size = block_sizes[j];
+	//	printf("Checking block size %d.\n", block_size);
+ //      run_kernel1<float>(d_inp, d_targets, d_softmaxed, d_losses, N, C, block_sizes[j]);
+ //      validate_result(d_softmaxed, h_softmaxed, "out", N, 1e-4f);
+ //      validate_result(d_losses, h_losses, "out", N, 1e-4f);
+	//}
+
+	//printf("All results match. Starting benchmarks.\n\n");
+	//for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
+	//	int block_size = block_sizes[j];
+
+	//	int repeat_times = 100;
+	//	float elapsed_time = benchmark_kernel(repeat_times, run_kernel1<float>, d_inp, d_targets, d_softmaxed, d_losses, N, C, block_sizes[j]);
+
+	//	printf("block_size %4d | time %.4f ms | per token %.2f µs\n", block_size, elapsed_time, elapsed_time * 1'000 / (N * C));
+	//}
+
 //	// free memory
 //   free(h_inp);
 //   free(h_targets);

@@ -2,7 +2,7 @@
 //#include "device_launch_parameters.h"
 //#include <cmath>
 //#include <iostream>
-//#define TEST_PYTORTH true
+//#define TEST_PYTORTH false
 //
 //void SGD_cpu(float* params_memory, const float* grads_memory, long num_parameters, float learning_rate=1e-3, float weight_decay=0.0) {
 //   for (int i = 0; i < num_parameters; i++) {
@@ -28,7 +28,7 @@
 //   srand(0);
 //	float* params_memory;
 //	float* grads_memory;
-//	const unsigned long num_parameters = 1000;
+//	const unsigned long num_parameters = 100;
 //	
 //	int deviceIdx = 0;
 //	cudaCheck(cudaSetDevice(deviceIdx));
@@ -37,8 +37,8 @@
 //	grads_memory = make_random_float(num_parameters);
 //
 //#if TEST_PYTORTH
-//    write_npy("SGD-optimizer\\params_memory.npy", params_memory, 1, new uint[1]{num_parameters});
-//    write_npy("SGD-optimizer\\grads_memory.npy", grads_memory, 1, new uint[1]{num_parameters});
+//    write_npy<float>("SGD-optimizer\\params_memory.npy", params_memory, 1, new unsigned long[1]{num_parameters});
+//    write_npy("SGD-optimizer\\grads_memory.npy", grads_memory, 1, new unsigned long[1]{num_parameters});
 //#endif
 //
 //	// move to GPU
@@ -50,14 +50,14 @@
 //	cudaCheck(cudaMemcpy(d_params_memory, params_memory, num_parameters * sizeof(float), cudaMemcpyHostToDevice));
 //
 //	// run cpu
-//   SGD_cpu(params_memory, grads_memory, num_parameters);
+//	measureExecutionTime(SGD_cpu, params_memory, grads_memory, num_parameters, 1e-3,0.0);
 //   
 //#if TEST_PYTORTH
-//    write_npy("SGD-optimizer\\updated_params_memory.npy", params_memory, 1, new uint[1]{num_parameters});
+//    write_npy("SGD-optimizer\\updated_params_memory.npy", params_memory, 1, new unsigned long[1]{num_parameters});
 //#endif
 //
 //	// run the kernel
-//	int block_sizes[] = { 32, 64, 128, 256, 512, 1024 };
+//	int block_sizes[] = { 8,16,32, 64, 128, 256, 512, 1024 };
 //	// first check the correctness of the kernel
 //	for (int j = 0; j < sizeof(block_sizes) / sizeof(int); j++) {
 //		int block_size = block_sizes[j];

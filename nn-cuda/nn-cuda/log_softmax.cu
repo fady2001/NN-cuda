@@ -92,7 +92,7 @@
 //int main()
 //{
 //	srand(0);
-//	const unsigned long N = 3, C = 3;
+//	const unsigned long N = 10000, C = 10000;
 //
 //	int deviceIdx = 0;
 //	cudaCheck(cudaSetDevice(deviceIdx));
@@ -100,15 +100,6 @@
 //	// create host memory of random numbers
 //	float* h_out = (float*)malloc(N * C * sizeof(float));
 //	float* h_inp = make_random_float(N * C);
-//
-//	// make the input less uniformly random: Otherwise, all probabilities will be basically zero,
-//	// and the tests are not actually meaningful.
-//	const int* outliers = make_random_int(N * 3, C);
-//	for (int k = 0; k < 3; ++k) {
-//		for (int j = 0; j < N; ++j) {
-//			h_inp[j * C + outliers[j * 3 + k]] *= 20;
-//		}
-//	}
 //
 //#if TEST_PYTORTH
 //  write_npy("softmax-layer\\h_inp.npy", h_inp, 2, new unsigned long[2]{N, C});
@@ -122,7 +113,7 @@
 //	cudaCheck(cudaMalloc(&d_inp, N * C * sizeof(float)));
 //	cudaCheck(cudaMemcpy(d_inp, h_inp, N * C * sizeof(float), cudaMemcpyHostToDevice));
 //
-//	log_softmax_cpu<float>(h_inp, h_out, N, C);
+//	measureExecutionTime(log_softmax_cpu<float>,h_inp, h_out, N, C);
 //  
 //#if TEST_PYTORTH
 // write_npy("softmax-layer\\h_out.npy", h_out, 2, new unsigned long[2]{N, C});

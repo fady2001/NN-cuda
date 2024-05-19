@@ -266,3 +266,13 @@ void read_training_data(const char *inp_path, const char *target_path,
     }
   }
 }
+
+
+template <typename Func, typename... Args>
+void measureExecutionTime(Func func, Args&&... args) {
+    auto start = std::chrono::high_resolution_clock::now();
+    func(std::forward<Args>(args)...);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("CPU time: %f ms\n", duration / 1'000.f);
+}
