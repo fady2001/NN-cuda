@@ -4,7 +4,8 @@
 #define uint unsigned int
 
 __global__ void mat_mul_K2_none(const float *A, const float *B, float *C,
-                                uint N, uint L, uint M) {
+                                uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   uint TILE_WIDTH = blockDim.x;
   float *As = shared_mem;
@@ -14,7 +15,8 @@ __global__ void mat_mul_K2_none(const float *A, const float *B, float *C,
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
   float sum = 0;
 
-  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+  {
     uint tile_col = tile * TILE_WIDTH + threadIdx.x;
     uint tile_row = tile * TILE_WIDTH + threadIdx.y;
 
@@ -30,21 +32,24 @@ __global__ void mat_mul_K2_none(const float *A, const float *B, float *C,
 
     __syncthreads();
 
-    for (uint k = 0; k < TILE_WIDTH; k++) {
+    for (uint k = 0; k < TILE_WIDTH; k++)
+    {
       sum +=
           As[threadIdx.y * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + threadIdx.x];
     }
     __syncthreads();
   }
 
-  if (col < M && row < N) {
+  if (col < M && row < N)
+  {
     C[row * M + col] = sum;
   }
 }
 #define index(row, col, M) (row * M + col)
 
 __global__ void mat_mul_K2_optimized(const float *A, const float *B, float *C,
-                                     uint N, uint L, uint M) {
+                                     uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   uint TILE_WIDTH = blockDim.x;
   float *As = shared_mem;
@@ -54,7 +59,8 @@ __global__ void mat_mul_K2_optimized(const float *A, const float *B, float *C,
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
   float sum = 0.0f;
 
-  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+  {
     uint tile_col = tile * TILE_WIDTH + threadIdx.x;
     uint tile_row = tile * TILE_WIDTH + threadIdx.y;
 
@@ -72,19 +78,22 @@ __global__ void mat_mul_K2_optimized(const float *A, const float *B, float *C,
     __syncthreads();
 
 #pragma unroll
-    for (uint k = 0; k < TILE_WIDTH; k++) {
+    for (uint k = 0; k < TILE_WIDTH; k++)
+    {
       sum +=
           As[threadIdx.y * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + threadIdx.x];
     }
     __syncthreads();
   }
 
-  if (col < M && row < N) {
+  if (col < M && row < N)
+  {
     C[row * M + col] = sum;
   }
 }
 __global__ void mat_mul_K2_optimized_v2(const float *A, const float *B,
-                                        float *C, uint N, uint L, uint M) {
+                                        float *C, uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   uint TILE_WIDTH = blockDim.x;
   const int TM = 2; // Number of elements each thread will compute
@@ -98,26 +107,34 @@ __global__ void mat_mul_K2_optimized_v2(const float *A, const float *B,
 
   float threadResults[TM] = {0.0f};
 
-  for (uint bkIdx = 0; bkIdx < (L + TILE_WIDTH - 1) / TILE_WIDTH; ++bkIdx) {
+  for (uint bkIdx = 0; bkIdx < (L + TILE_WIDTH - 1) / TILE_WIDTH; ++bkIdx)
+  {
     // Populate the shared memory caches
     innerRowA = threadIdx.y;
     innerColA = threadIdx.x;
     innerRowB = threadIdx.y;
     innerColB = threadIdx.x;
 
-    for (int i = 0; i < TM; ++i) {
+    for (int i = 0; i < TM; ++i)
+    {
       uint tile_row = row + i * TILE_WIDTH;
-      if ((bkIdx * TILE_WIDTH + innerColA) < L && tile_row < N) {
+      if ((bkIdx * TILE_WIDTH + innerColA) < L && tile_row < N)
+      {
         As[innerRowA * TILE_WIDTH + innerColA] =
             A[tile_row * L + bkIdx * TILE_WIDTH + innerColA];
-      } else {
+      }
+      else
+      {
         As[innerRowA * TILE_WIDTH + innerColA] = 0.0f;
       }
 
-      if ((bkIdx * TILE_WIDTH + innerRowB) < L && col < M) {
+      if ((bkIdx * TILE_WIDTH + innerRowB) < L && col < M)
+      {
         Bs[innerRowB * TILE_WIDTH + innerColB] =
             B[(bkIdx * TILE_WIDTH + innerRowB) * M + col];
-      } else {
+      }
+      else
+      {
         Bs[innerRowB * TILE_WIDTH + innerColB] = 0.0f;
       }
     }
@@ -128,9 +145,11 @@ __global__ void mat_mul_K2_optimized_v2(const float *A, const float *B,
     B += TILE_WIDTH * M;
 
     // Calculate per-thread results
-    for (uint dotIdx = 0; dotIdx < TILE_WIDTH; ++dotIdx) {
+    for (uint dotIdx = 0; dotIdx < TILE_WIDTH; ++dotIdx)
+    {
       float Btmp = Bs[dotIdx * TILE_WIDTH + threadIdx.x];
-      for (uint resIdx = 0; resIdx < TM; ++resIdx) {
+      for (uint resIdx = 0; resIdx < TM; ++resIdx)
+      {
         threadResults[resIdx] +=
             As[(threadIdx.y + resIdx * TILE_WIDTH) * TILE_WIDTH + dotIdx] *
             Btmp;
@@ -140,20 +159,23 @@ __global__ void mat_mul_K2_optimized_v2(const float *A, const float *B,
   }
 
   // Write the results to global memory
-  for (int i = 0; i < TM; ++i) {
+  for (int i = 0; i < TM; ++i)
+  {
     uint tile_row = row + i * TILE_WIDTH;
-    if (tile_row < N && col < M) {
+    if (tile_row < N && col < M)
+    {
       C[tile_row * M + col] = threadResults[i];
     }
   }
 }
 
-#define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
+#define CEIL_DIV(M, N) (((M) + (N) - 1) / (N))
 
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
 __global__ void __launch_bounds__((BM * BN) / (TM * TN), 1)
     sgemm2DBlocktiling(int M, int N, int K, float alpha, const float *A,
-                       const float *B, float beta, float *C) {
+                       const float *B, float beta, float *C)
+{
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
@@ -194,13 +216,16 @@ __global__ void __launch_bounds__((BM * BN) / (TM * TN), 1)
   float regN[TN] = {0.0};
 
   // outer-most loop over block tiles
-  for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
+  for (uint bkIdx = 0; bkIdx < K; bkIdx += BK)
+  {
     // populate the SMEM caches
-    for (uint loadOffset = 0; loadOffset < BM; loadOffset += strideA) {
+    for (uint loadOffset = 0; loadOffset < BM; loadOffset += strideA)
+    {
       As[(innerRowA + loadOffset) * BK + innerColA] =
           A[(innerRowA + loadOffset) * K + innerColA];
     }
-    for (uint loadOffset = 0; loadOffset < BK; loadOffset += strideB) {
+    for (uint loadOffset = 0; loadOffset < BK; loadOffset += strideB)
+    {
       Bs[(innerRowB + loadOffset) * BN + innerColB] =
           B[(innerRowB + loadOffset) * N + innerColB];
     }
@@ -211,16 +236,21 @@ __global__ void __launch_bounds__((BM * BN) / (TM * TN), 1)
     B += BK * N; // move BK rows down
 
     // calculate per-thread results
-    for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
+    for (uint dotIdx = 0; dotIdx < BK; ++dotIdx)
+    {
       // block into registers
-      for (uint i = 0; i < TM; ++i) {
+      for (uint i = 0; i < TM; ++i)
+      {
         regM[i] = As[(threadRow * TM + i) * BK + dotIdx];
       }
-      for (uint i = 0; i < TN; ++i) {
+      for (uint i = 0; i < TN; ++i)
+      {
         regN[i] = Bs[dotIdx * BN + threadCol * TN + i];
       }
-      for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
-        for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
+      for (uint resIdxM = 0; resIdxM < TM; ++resIdxM)
+      {
+        for (uint resIdxN = 0; resIdxN < TN; ++resIdxN)
+        {
           threadResults[resIdxM * TN + resIdxN] +=
               regM[resIdxM] * regN[resIdxN];
         }
@@ -230,8 +260,10 @@ __global__ void __launch_bounds__((BM * BN) / (TM * TN), 1)
   }
 
   // write out the results
-  for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
-    for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
+  for (uint resIdxM = 0; resIdxM < TM; ++resIdxM)
+  {
+    for (uint resIdxN = 0; resIdxN < TN; ++resIdxN)
+    {
       C[(threadRow * TM + resIdxM) * N + threadCol * TN + resIdxN] =
           alpha * threadResults[resIdxM * TN + resIdxN] +
           beta * C[(threadRow * TM + resIdxM) * N + threadCol * TN + resIdxN];
@@ -239,7 +271,8 @@ __global__ void __launch_bounds__((BM * BN) / (TM * TN), 1)
   }
 }
 __global__ void mat_mul_K2_first_T(const float *A, const float *B, float *C,
-                                   uint N, uint L, uint M) {
+                                   uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   float *As = shared_mem;
   uint TILE_WIDTH = blockDim.x;
@@ -250,7 +283,8 @@ __global__ void mat_mul_K2_first_T(const float *A, const float *B, float *C,
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
   float sum = 0;
 
-  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+  {
     uint tile_col = tile * TILE_WIDTH + threadIdx.x;
     uint tile_row = tile * TILE_WIDTH + threadIdx.y;
 
@@ -266,20 +300,23 @@ __global__ void mat_mul_K2_first_T(const float *A, const float *B, float *C,
 
     __syncthreads();
 
-    for (uint k = 0; k < TILE_WIDTH; k++) {
+    for (uint k = 0; k < TILE_WIDTH; k++)
+    {
       sum +=
           As[threadIdx.y * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + threadIdx.x];
     }
     __syncthreads();
   }
 
-  if (col < M && row < N) {
+  if (col < M && row < N)
+  {
     C[row * M + col] = sum;
   }
 }
 
 __global__ void mat_mul_K2_second_T(const float *A, const float *B, float *C,
-                                    uint N, uint L, uint M) {
+                                    uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   uint TILE_WIDTH = blockDim.x;
   float *As = shared_mem;
@@ -289,7 +326,8 @@ __global__ void mat_mul_K2_second_T(const float *A, const float *B, float *C,
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
   float sum = 0;
 
-  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+  {
     uint tile_col = tile * TILE_WIDTH + threadIdx.x;
     uint tile_row = tile * TILE_WIDTH + threadIdx.y;
 
@@ -305,20 +343,23 @@ __global__ void mat_mul_K2_second_T(const float *A, const float *B, float *C,
 
     __syncthreads();
 
-    for (uint k = 0; k < TILE_WIDTH; k++) {
+    for (uint k = 0; k < TILE_WIDTH; k++)
+    {
       sum +=
           As[threadIdx.y * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + threadIdx.x];
     }
     __syncthreads();
   }
 
-  if (col < M && row < N) {
+  if (col < M && row < N)
+  {
     C[row * M + col] = sum;
   }
 }
 
 __global__ void mat_mul_K2_both_T(const float *A, const float *B, float *C,
-                                  uint N, uint L, uint M) {
+                                  uint N, uint L, uint M)
+{
   extern __shared__ float shared_mem[];
   uint TILE_WIDTH = blockDim.x;
   float *As = shared_mem;
@@ -328,7 +369,8 @@ __global__ void mat_mul_K2_both_T(const float *A, const float *B, float *C,
   uint row = blockIdx.y * blockDim.y + threadIdx.y;
   float sum = 0;
 
-  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++) {
+  for (uint tile = 0; tile < (L + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+  {
     uint tile_col = tile * TILE_WIDTH + threadIdx.x;
     uint tile_row = tile * TILE_WIDTH + threadIdx.y;
 
@@ -344,20 +386,23 @@ __global__ void mat_mul_K2_both_T(const float *A, const float *B, float *C,
 
     __syncthreads();
 
-    for (uint k = 0; k < TILE_WIDTH; k++) {
+    for (uint k = 0; k < TILE_WIDTH; k++)
+    {
       sum +=
           As[threadIdx.y * TILE_WIDTH + k] * Bs[k * TILE_WIDTH + threadIdx.x];
     }
     __syncthreads();
   }
 
-  if (col < M && row < N) {
+  if (col < M && row < N)
+  {
     C[row * M + col] = sum;
   }
 }
 void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
                         bool is_first_T, bool is_second_T, int sqrt_block_size,
-                        int version = 0) {
+                        int version = 0)
+{
   size_t shared_mem_size =
       2 * sqrt_block_size * sqrt_block_size * sizeof(float);
 
@@ -365,8 +410,10 @@ void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
                 (N + sqrt_block_size - 1) / sqrt_block_size);
   dim3 block_dim(sqrt_block_size, sqrt_block_size);
 
-  if (!is_first_T && !is_second_T) {
-    if (version > 2) {
+  if (!is_first_T && !is_second_T)
+  {
+    if (version > 2)
+    {
       perror("Invalid Kernel version");
       exit(EXIT_FAILURE);
     }
@@ -376,7 +423,8 @@ void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
     if (version == 1)
       mat_mul_K2_optimized<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N,
                                                                      L, M);
-    else if (version == 2) {
+    else if (version == 2)
+    {
       const int BM = 128;
       const int BN = 128;
       const int BK = 8;
@@ -392,24 +440,33 @@ void mat_mul_dispatcher(float *A, float *B, float *C, uint N, uint L, uint M,
       sgemm2DBlocktiling<BM, BN, BK, TM, TN>
           <<<gridDim, blockDim, sharedMemSize>>>(M, N, L, 1, A, B, 0, C);
     }
-  } else if (is_first_T && !is_second_T) {
-    if (version > 0) {
+  }
+  else if (is_first_T && !is_second_T)
+  {
+    if (version > 0)
+    {
       perror("Invalid Kernel version");
       exit(EXIT_FAILURE);
     }
     if (version == 0)
       mat_mul_K2_first_T<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N,
                                                                    L, M);
-  } else if (!is_first_T && is_second_T) {
-    if (version > 0) {
+  }
+  else if (!is_first_T && is_second_T)
+  {
+    if (version > 0)
+    {
       perror("Invalid Kernel version");
       exit(EXIT_FAILURE);
     }
     if (version == 0)
       mat_mul_K2_second_T<<<grid_dim, block_dim, shared_mem_size>>>(A, B, C, N,
                                                                     L, M);
-  } else if (is_first_T && is_second_T) {
-    if (version > 0) {
+  }
+  else if (is_first_T && is_second_T)
+  {
+    if (version > 0)
+    {
       perror("Invalid Kernel version");
       exit(EXIT_FAILURE);
     }
